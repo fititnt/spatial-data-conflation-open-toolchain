@@ -21,11 +21,12 @@
 #       COMPANY:  EticaAI
 #       LICENSE:  Public Domain dedication or Zero-Clause BSD
 #                 SPDX-License-Identifier: Unlicense OR 0BSD
-#       VERSION:  v0.6.0
+#       VERSION:  v0.6.1
 #       CREATED:  2023-04-16 22:36 BRT
 #      REVISION:  2023-04-17 02:32 BRT v0.4.0 accept Overpas GeoJSON flavor
 #                 2023-04-18 00:25 BRT v0.5.0 supports Polygon (not just Point)
 #                 2023-04-19 21:52 BRT v0.6.0 draft of diff GeoJSON and JOSM
+#                 2023-04-25 03:58 BRT v0.6.1 miggrade as pip package
 # ==============================================================================
 
 import argparse
@@ -42,7 +43,7 @@ from shapely.geometry import Polygon
 from xml.sax.saxutils import escape
 
 
-__VERSION__ = "0.6.0"
+__VERSION__ = "0.6.1"
 
 PROGRAM = "geojson-diff"
 DESCRIPTION = """
@@ -1091,10 +1092,13 @@ def tabular_writer(file_or_stdout: str, data: List[list], delimiter: str = ",") 
         cwriter.writerow(line)
 
 
+def exec_from_console_scripts():
+    main = Cli()
+    args = main.make_args()
+    main.execute_cli(args)
+
+
 if __name__ == "__main__":
     main = Cli()
     args = main.make_args()
-    # pyargs.print_help()
-
-    # args.execute_cli(args)
     main.execute_cli(args)
