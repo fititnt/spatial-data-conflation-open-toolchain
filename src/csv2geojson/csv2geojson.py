@@ -98,7 +98,7 @@ CNPJ_BASICO;CNPJ_ORDEM;CNPJ_DV;IDENTIFICADOR;MATRIZ_FILIAL;SITUAÇÃO_CADASTRAL;
                             EXEMPLŌRUM GRATIĀ
 ------------------------------------------------------------------------------
 """.format(
-    __file__
+    PROGRAM
 )
 
 STDIN = sys.stdin.buffer

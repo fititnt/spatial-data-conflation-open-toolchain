@@ -1,2 +1,6 @@
+# geojsondiff
 shapely
 haversine
+
+# Used only by csv2excel
+pandas

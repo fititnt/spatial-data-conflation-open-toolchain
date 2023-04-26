@@ -49,7 +49,7 @@ __EPILOGUM__ = """
                             EXEMPLŌRUM GRATIĀ
 ------------------------------------------------------------------------------
 """.format(
-    __file__
+    PROGRAM
 )
 
 STDIN = sys.stdin.buffer

@@ -86,7 +86,7 @@ GeoJSON (center point) example with overpass . . . . . . . . . . . . . . . . .
                             EXEMPLŌRUM GRATIĀ
 ------------------------------------------------------------------------------
 """.format(
-    __file__
+    PROGRAM
 )
 
 STDIN = sys.stdin.buffer
