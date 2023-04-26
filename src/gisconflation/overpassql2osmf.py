@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 # ==============================================================================
 #
-#          FILE:  csv2excel.py
+#          FILE:  overpassql2osmf.py
 #
-#         USAGE:  ./scripts/csv2excel.py
-#                 ./scripts/csv2excel.py --help
+#         USAGE:  overpassql2osmf --help
 #
 #   DESCRIPTION:  ---
 #
@@ -21,19 +20,26 @@
 #       LICENSE:  Public Domain dedication or Zero-Clause BSD
 #                 SPDX-License-Identifier: Unlicense OR 0BSD
 #       VERSION:  v0.2.0
-#       CREATED:  2023-04-23 01:04 BRT
+#       CREATED:  2023-04-26 01:04 BRT
 #      REVISION:  ---
 # ==============================================================================
 
+# ./src/gisconflation/overpassql2osmf.py --help
+# ./src/gisconflation/overpassql2osmf.py tests/data/cnes.overpassql tests/temp/cnes.osm.json
+
+import os
 import sys
 import argparse
-import pandas as pd
+
+import requests
+
+# import pandas as pd
 
 __VERSION__ = "0.2.0"
-PROGRAM = "csv2excel"
+PROGRAM = "overpassql2osmf"
 DESCRIPTION = """
 ------------------------------------------------------------------------------
-{0} v{1} Convert CSV to Excel file with autofilters
+{0} v{1} convert Overpass Query Language to am OSM File (XML)
 
 ------------------------------------------------------------------------------
 """.format(
@@ -53,6 +59,9 @@ __EPILOGUM__ = """
 )
 
 STDIN = sys.stdin.buffer
+OVERPASS_INTERPRETER = os.getenv(
+    "OVERPASS_INTERPRETER", "https://overpass-api.de/api/interpreter"
+)
 
 
 class Cli:
@@ -74,8 +83,10 @@ class Cli:
             epilog=__EPILOGUM__,
         )
 
-        parser.add_argument("input_csv", help="Input CSV file")
-        parser.add_argument("output_xlsx", help="Output XLSX")
+        parser.add_argument(
+            "input_query", help="Input OverpassQL query or path to .overpassql file"
+        )
+        # parser.add_argument("output_file", help="Output XLSX")
 
         # # @see https://stackoverflow.com/questions/41669690/how-to-overcome-the-limit-of-hyperlinks-in-excel
         # parser.add_argument(
@@ -95,54 +106,40 @@ class Cli:
         return parser.parse_args()
 
     def execute_cli(self, pyargs, stdin=STDIN, stdout=sys.stdout, stderr=sys.stderr):
-        csv2excel(pyargs.input_csv, pyargs.output_xlsx)
+        query = pyargs.input_query
+        if pyargs.input_query.endswith(".overpassql"):
+            with open(pyargs.input_query, "r") as file:
+                query = file.read()
+
+        result_str = overpassql2osmf(
+            query,
+        )
+        print(result_str)
+        # with open(pyargs.output_file, "w") as file:
+        #     file.write(result_str)
+
         return self.EXIT_OK
 
 
-def csv2excel(input_csv: str, output_xlsx: str, delimiter: str = ","):
-    """csv2excel
+def overpassql2osmf(input_query: str):
+    """overpassql2osmf
     @see https://xlsxwriter.readthedocs.io/example_pandas_autofilter.html
 
     Args:
-        input_csv (str): Input CSV file
-        output_xlsx (str): Output XLSX
+        input_query (str): Input CSV file
+        output_file (str): Output XLSX
     """
-    # print("TODO")
-    df = pd.read_csv(input_csv, sep=delimiter)
 
-    # Create a Pandas Excel writer using XlsxWriter as the engine.
-    writer = pd.ExcelWriter(output_xlsx, engine="xlsxwriter")
+    print("TODO")
+    print(input_query)
 
-    # Convert the dataframe to an XlsxWriter Excel object. We also turn off the
-    # index column at the left of the output dataframe.
-    df.to_excel(writer, sheet_name="Sheet1", index=False)
+    payload = {"data": input_query}
 
-    # Get the xlsxwriter workbook and worksheet objects.
-    workbook = writer.book
-    worksheet = writer.sheets["Sheet1"]
-
-    # worksheet.write_url("A2", "ftp://www.python.org/")
-
-    # Get the dimensions of the dataframe.
-    (max_row, max_col) = df.shape
-
-    # Make the columns wider for clarity.
-    worksheet.set_column(0, max_col - 1, 12)
-
-    # Set the autofilter.
-    worksheet.autofilter(0, 0, max_row, max_col - 1)
-
-    # Add an optional filter criteria. The placeholder "Region" in the filter
-    # is ignored and can be any string that adds clarity to the expression.
-    # worksheet.filter_column(0, "Region == East")
-
-    # # It isn't enough to just apply the criteria. The rows that don't match
-    # # must also be hidden. We use Pandas to figure our which rows to hide.
-    # for row_num in df.index[(df["Region"] != "East")].tolist():
-    #     worksheet.set_row(row_num + 1, options={"hidden": True})
-
-    # Close the Pandas Excel writer and output the Excel file.
-    writer.close()
+    r = requests.post(OVERPASS_INTERPRETER, data=payload)
+    # print(output_file)
+    print(r)
+    print(r.content)
+    return "todo"
 
 
 def parse_argument_values(arguments: list, delimiter: str = "||") -> dict:
