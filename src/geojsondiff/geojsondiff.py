@@ -241,7 +241,17 @@ class Cli:
             dest="filter_ab_dist_max",
             default=None,
             required=False,
-            nargs="?",
+            action="store_true",
+            # nargs="?",
+        )
+
+        filters.add_argument(
+            "--filter-matched-pivot-key-not",
+            help="[DRAFT] Do not output items matched by main pivot key",
+            dest="filter_matched_key_not",
+            default=None,
+            required=False,
+            action="store_true",
         )
 
         advanced = parser.add_argument_group(
@@ -292,6 +302,7 @@ class Cli:
         cfilters = ConflationFilters(
             filter_ab_dist_min=pyargs.filter_ab_dist_min,
             filter_ab_dist_max=pyargs.filter_ab_dist_max,
+            filter_matched_key_not=pyargs.filter_matched_key_not,
         )
 
         cprefilters = ConflationPrefilters(
@@ -332,16 +343,25 @@ class Cli:
 
 class ConflationFilters:
     def __init__(
-        self, filter_ab_dist_min: int = None, filter_ab_dist_max: int = None
+        self,
+        filter_ab_dist_min: int = None,
+        filter_ab_dist_max: int = None,
+        filter_matched_key_not: bool = None,
     ) -> None:
         if filter_ab_dist_min is not None:
             self.filter_ab_dist_min = float(filter_ab_dist_min)
         else:
             self.filter_ab_dist_min = None
+
         if filter_ab_dist_max is not None:
             self.filter_ab_dist_max = float(filter_ab_dist_max)
         else:
             self.filter_ab_dist_max = None
+
+        if filter_matched_key_not is not None:
+            self.filter_matched_key_not = filter_matched_key_not
+        else:
+            self.filter_matched_key_not = None
         # self.filter_ab_dist_max = filter_ab_dist_max
 
     def dist_ab(self, item_dist=int):
@@ -424,18 +444,26 @@ class ConflationRules:
 
 class DatasetInMemory:
     def __init__(
-        self, alias: str, group: str, cprefilters: Type["ConflationPrefilters"]
+        self,
+        alias: str,
+        group: str,
+        cprefilters: Type["ConflationPrefilters"],
+        pivot_key: str = None,
     ) -> None:
         self.alias = alias
         self.group = group
         self.index = -1
         self.cprefilters = cprefilters
+        self.pivot_key = pivot_key
         # self.is_a = is_a
 
         # Tuple
         # (coords, props, geometry?)
         # geometry? = only if not already point
         self.items = []
+        self.pk = None
+        self.pivot_keys_in = []
+        self.pivot_keys_in_duplicate = []
 
     def add_item(self, item: dict):
         self.index += 1
@@ -474,6 +502,20 @@ class DatasetInMemory:
                     props = item["properties"]
                 # self.items.append(None)
                 # self.items.append((coords, props))
+
+                if (
+                    self.pivot_key is not None
+                    and props is not None
+                    and self.pivot_key in props
+                    and props[self.pivot_key]
+                ):
+                    keyval = str(props[self.pivot_key]).strip()
+                    # self.pk = keyval
+                    if keyval in self.pivot_keys_in:
+                        self.pivot_keys_in_duplicate.append(keyval)
+                    else:
+                        self.pivot_keys_in.append(keyval)
+
                 self.items.append((coords, props, geometry_original))
             else:
                 # For now ignoring non Point features
@@ -501,6 +543,20 @@ class DatasetInMemory:
             ):
                 props = item[_properties]
             # self.items.append((coords, props))
+
+            if (
+                self.pivot_key is not None
+                and props is not None
+                and self.pivot_key in props
+                and props[self.pivot_key]
+            ):
+                keyval = str(props[self.pivot_key]).strip()
+                # self.pk = keyval
+                if keyval in self.pivot_keys_in:
+                    self.pivot_keys_in_duplicate.append(keyval)
+                else:
+                    self.pivot_keys_in.append(keyval)
+
             self.items.append((coords, props, None))
 
 
