@@ -247,7 +247,7 @@ class Cli:
 
         filters.add_argument(
             "--filter-matched-pivot-key-not",
-            help="[DRAFT] Do not output items matched by main pivot key",
+            help="Do not output items matched by main pivot key",
             dest="filter_matched_key_not",
             default=None,
             required=False,
@@ -293,9 +293,19 @@ class Cli:
         # distance_okay = int(pyargs.tdist)
         # distance_permissive = 250
 
+        # @TODO actually allow multiple primary keys or remove documentation
+        pks_dict = parse_argument_values(pyargs.pivot_key_main)
+        pivot_key_main = None
+        if len(pks_dict.items()) > 0:
+            _k = list(pks_dict.keys())[0]
+            pivot_key_main = pks_dict[_k]
+
+        # print('oi', pyargs.pivot_key_main, pks_dict)
+
         crules = ConflationRules(
             distance_okay=int(pyargs.tdist),
-            pivot_key_main=parse_argument_values(pyargs.pivot_key_main),
+            # pivot_key_main=parse_argument_values(pyargs.pivot_key_main),
+            pivot_key_main=pivot_key_main,
             pivot_attr_2=parse_argument_values(pyargs.pivot_attr_2),
         )
 
@@ -380,6 +390,25 @@ class ConflationFilters:
 
         return True
 
+    def pk_allow(
+        self,
+        item_index: int,
+        current_dataset: Type["DatasetInMemory"],
+        other_dataset: Type["DatasetInMemory"],
+    ):
+        if self.filter_matched_key_not is None:
+            return True
+
+        item_pk = current_dataset.item_pk(item_index)
+        # print(">> o", item_pk, other_dataset.pivot_keys_in)
+        # print("<<c", item_pk, current_dataset.pivot_keys_in)
+        # print(current_dataset.pivot_keys_in)
+        # print(current_dataset.pivot_keys_in_duplicate)
+        if item_pk is not None and str(item_pk) in other_dataset.pivot_keys_in:
+            return False
+
+        return True
+
 
 class ConflationPrefilters:
     def __init__(
@@ -454,14 +483,14 @@ class DatasetInMemory:
         self.group = group
         self.index = -1
         self.cprefilters = cprefilters
-        self.pivot_key = pivot_key
+        self.pivot_key = str(pivot_key) if pivot_key is not None else None
         # self.is_a = is_a
 
         # Tuple
         # (coords, props, geometry?)
         # geometry? = only if not already point
         self.items = []
-        self.pk = None
+        # self.pk = None
         self.pivot_keys_in = []
         self.pivot_keys_in_duplicate = []
 
@@ -559,6 +588,16 @@ class DatasetInMemory:
 
             self.items.append((coords, props, None))
 
+    def item_pk(self, item_index: int) -> str:
+        if not self.pivot_key:
+            return None
+
+        item_props = self.items[item_index][1]
+        if not item_props or self.pivot_key not in item_props:
+            return False
+
+        return item_props[self.pivot_key]
+
 
 class GeojsonCompare:
     """GeojsonCompare
@@ -603,7 +642,10 @@ class GeojsonCompare:
             DatasetInMemory
         """
         # print(self.__dict__)
-        data = DatasetInMemory(alias, group, self.cprefilters)
+        # print(self.crules.pivot_key_main)
+        data = DatasetInMemory(
+            alias, group, self.cprefilters, pivot_key=self.crules.pivot_key_main
+        )
 
         with open(path, "r") as file:
             # TODO optimize geojsonl
@@ -848,6 +890,9 @@ class GeojsonCompare:
                 final_properties[f"a->b.distance"] = -1
 
             if not self.cfilters.dist_ab(final_properties[f"a->b.distance"]):
+                continue
+
+            if not self.cfilters.pk_allow(index_a, self.a, self.b):
                 continue
 
             # # Colors inspired by
@@ -1127,11 +1172,14 @@ def parse_argument_values(arguments: list, delimiter: str = "||") -> dict:
 
     result = {}
     for item in arguments:
+        # print('__', item, item.find(delimiter))
         if item.find(delimiter) > -1:
             _key, _val = item.split(delimiter)
             result[_key] = _val
         else:
-            result[_key] = True
+            result[item] = True
+
+    # print('__f', result)
     return result
 
 
