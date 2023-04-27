@@ -246,6 +246,15 @@ class Cli:
         )
 
         filters.add_argument(
+            "--filter-matched-pivot-key",
+            help="Only output items matched by main pivot key",
+            dest="filter_matched_key",
+            default=None,
+            required=False,
+            action="store_true",
+        )
+
+        filters.add_argument(
             "--filter-matched-pivot-key-not",
             help="Do not output items matched by main pivot key",
             dest="filter_matched_key_not",
@@ -312,6 +321,7 @@ class Cli:
         cfilters = ConflationFilters(
             filter_ab_dist_min=pyargs.filter_ab_dist_min,
             filter_ab_dist_max=pyargs.filter_ab_dist_max,
+            filter_matched_key=pyargs.filter_matched_key,
             filter_matched_key_not=pyargs.filter_matched_key_not,
         )
 
@@ -356,6 +366,7 @@ class ConflationFilters:
         self,
         filter_ab_dist_min: int = None,
         filter_ab_dist_max: int = None,
+        filter_matched_key: bool = None,
         filter_matched_key_not: bool = None,
     ) -> None:
         if filter_ab_dist_min is not None:
@@ -368,11 +379,15 @@ class ConflationFilters:
         else:
             self.filter_ab_dist_max = None
 
+        if filter_matched_key is not None:
+            self.filter_matched_key = filter_matched_key
+        else:
+            self.filter_matched_key = None
+
         if filter_matched_key_not is not None:
             self.filter_matched_key_not = filter_matched_key_not
         else:
             self.filter_matched_key_not = None
-        # self.filter_ab_dist_max = filter_ab_dist_max
 
     def dist_ab(self, item_dist=int):
         if item_dist is None:
@@ -396,15 +411,31 @@ class ConflationFilters:
         current_dataset: Type["DatasetInMemory"],
         other_dataset: Type["DatasetInMemory"],
     ):
-        if self.filter_matched_key_not is None:
+        if self.filter_matched_key_not is None and self.filter_matched_key is None:
             return True
+
+        if (
+            self.filter_matched_key_not is not None
+            and self.filter_matched_key is not None
+        ):
+            raise SyntaxError("Conflict: filter_matched_key + filter_matched_key_not ")
 
         item_pk = current_dataset.item_pk(item_index)
         # print(">> o", item_pk, other_dataset.pivot_keys_in)
         # print("<<c", item_pk, current_dataset.pivot_keys_in)
         # print(current_dataset.pivot_keys_in)
         # print(current_dataset.pivot_keys_in_duplicate)
-        if item_pk is not None and str(item_pk) in other_dataset.pivot_keys_in:
+        if (
+            item_pk is not None
+            and (
+                self.filter_matched_key_not is not None
+                and str(item_pk) in other_dataset.pivot_keys_in
+            )
+            or (
+                self.filter_matched_key
+                and str(item_pk) not in other_dataset.pivot_keys_in
+            )
+        ):
             return False
 
         return True
