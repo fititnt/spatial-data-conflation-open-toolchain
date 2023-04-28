@@ -25,7 +25,9 @@
 # ==============================================================================
 
 # ./src/gisconflation/overpassql2osmf.py --help
-# ./src/gisconflation/overpassql2osmf.py tests/data/cnes.overpassql tests/temp/cnes.osm.json
+# ./src/gisconflation/overpassql2osmf.py tests/data/cnes.overpassql > tests/temp/cnes.osm.json
+# overpassql2osmf tests/data/cnes.overpassql > tests/temp/cnes.osm.json
+# ./src/gisconflation/overpassql2osmf.py '[out:csv(::id,::type,"name")]; area[name="Bonn"]; nwr(area)[railway=station]; out;' > tests/temp/bonn.osm.csv
 
 import os
 import sys
@@ -111,6 +113,10 @@ class Cli:
             with open(pyargs.input_query, "r") as file:
                 query = file.read()
 
+        # print(query)
+        # print('')
+        # print('')
+
         result_str = overpassql2osmf(
             query,
         )
@@ -129,17 +135,10 @@ def overpassql2osmf(input_query: str):
         input_query (str): Input CSV file
         output_file (str): Output XLSX
     """
-
-    print("TODO")
-    print(input_query)
-
     payload = {"data": input_query}
-
     r = requests.post(OVERPASS_INTERPRETER, data=payload)
-    # print(output_file)
-    print(r)
-    print(r.content)
-    return "todo"
+
+    return r.text
 
 
 def parse_argument_values(arguments: list, delimiter: str = "||") -> dict:

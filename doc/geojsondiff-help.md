@@ -7,7 +7,8 @@ usage: geojson-diff [-h] [--output-diff-geojson [OUTDIFFGEO]]
                     [--prefilter-a-contain [PREFILTER_A_CONTAIN]]
                     [--prefilter-b-contain [PREFILTER_B_CONTAIN]]
                     [--filter-ab-dist-min [FILTER_AB_DIST_MIN]]
-                    [--filter-ab-dist-max [FILTER_AB_DIST_MAX]]
+                    [--filter-ab-dist-max] [--filter-matched-pivot-key]
+                    [--filter-matched-pivot-key-not]
                     [--output-josm-file [OUTOSC]]
                     geodataset_a geodataset_b
 
@@ -63,8 +64,11 @@ Pre-filter data before processing:
 Quick output filters for GeoJSON output. Ignored by tabular diffs:
   --filter-ab-dist-min [FILTER_AB_DIST_MIN]
                         Minimal distance between A and B. Example: 0
-  --filter-ab-dist-max [FILTER_AB_DIST_MAX]
-                        Minimal distance between A and B. Example: 0
+  --filter-ab-dist-max  Minimal distance between A and B. Example: 0
+  --filter-matched-pivot-key
+                        Only output items matched by main pivot key
+  --filter-matched-pivot-key-not
+                        Do not output items matched by main pivot key
 
 ADVANCED. Do not upload to OpenStreetMap unless you review the output. Requires A be an external dataset, and B be OpenStreetMap data. :
   --output-josm-file [OUTOSC]
