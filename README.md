@@ -10,7 +10,6 @@
 ## Installing
 
 ```bash
-# @TODO release this as pip package
 pip install --upgrade gis-conflation-toolchain
 ```
 
