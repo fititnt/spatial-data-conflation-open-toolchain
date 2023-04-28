@@ -27,7 +27,15 @@
 # ./src/gisconflation/overpassql2osmf.py --help
 # ./src/gisconflation/overpassql2osmf.py tests/data/cnes.overpassql > tests/temp/cnes.osm.json
 # overpassql2osmf tests/data/cnes.overpassql > tests/temp/cnes.osm.json
+# overpassql2osmf tests/data/cnes.overpassql | osmf2geojson > tests/temp/cnes.osm.geojson
 # ./src/gisconflation/overpassql2osmf.py '[out:csv(::id,::type,"name")]; area[name="Bonn"]; nwr(area)[railway=station]; out;' > tests/temp/bonn.osm.csv
+
+
+# overpassql2osmf tests/data/cnes.overpassql > tests/temp/cnes.osm
+# osmium sort tests/temp/cnes.osm --output-format osm > tests/temp/cnes-sorted.osm
+# osmium export tests/temp/cnes-sorted.osm --output-format geojson > tests/temp/cnes.osm.geojson
+
+# osmf2geojson tests/temp/cnes-sorted.osm > tests/temp/cnes.osm.geojson
 
 import os
 import sys

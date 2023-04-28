@@ -1,15 +1,17 @@
 # spatial-data-conflation-open-toolchain
 **[EARLY DRAFT] Open, free to use, toolchain for geospatial data conflation. Command-line interface for file manipulation.** _See geojson-diff.py from <https://github.com/fititnt/openstreetmap-vs-dados-abertos-brasil>._
 
-[![GitHub](https://img.shields.io/badge/GitHub-fititnt%2Fgeojson--diff-lightgrey?logo=github&style=social[fititnt/geojson-diff] "GitHub")](https://github.com/fititnt/geojson-diff)
-[![Pypi: geojson-diff](https://img.shields.io/badge/python%20pypi-geojson--diff-brightgreen[Python] 
- "Pypi: geojson-diff")](https://pypi.org/project/geojson-diff)
+[![GitHub](https://img.shields.io/badge/GitHub-fititnt%20spatial--data--conflation--open--toolchain-lightgrey?logo=github&style=social[fititnt/geojson-diff] "GitHub")](https://github.com/fititnt/spatial-data-conflation-open-toolchain)
+
+[![Pypi: gis-conflation-toolchain](https://img.shields.io/badge/python%20pypi-gis--conflation--toolchain-brightgreen[Python] 
+ "Pypi: gis-conflation-toolchain")](https://pypi.org/project/gis-conflation-toolchain)
+
 
 ## Installing
 
 ```bash
 # @TODO release this as pip package
-pip install --upgrade git+https://github.com/fititnt/spatial-data-conflation-open-toolchain.git#egg=geojson-diff
+pip install --upgrade gis-conflation-toolchain
 ```
 
 <!--

@@ -1,0 +1,35 @@
+SELECT DISTINCT ?item ?itemLabel WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE]". }
+  {
+    SELECT DISTINCT ?item WHERE {
+      {
+        ?item p:P31 ?statement0.
+        ?statement0 (ps:P31) wd:Q16917.
+        FILTER(EXISTS { ?statement0 prov:wasDerivedFrom ?reference. })
+      }
+      {SELECT DISTINCT ?item ?itemLabel WHERE {
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE]". }
+  {
+    SELECT DISTINCT ?item WHERE {
+      {
+        ?item p:P31 ?statement0.
+        ?statement0 (ps:P31) wd:Q16917.
+        FILTER(EXISTS { ?statement0 prov:wasDerivedFrom ?reference. })
+      }
+      {
+        ?item p:P131 ?statement1.
+        ?statement1 (ps:P131/(wdt:P131*)) wd:Q40030.
+        FILTER(EXISTS { ?statement1 prov:wasDerivedFrom ?reference. })
+      }
+    }
+    LIMIT 100
+  }
+}
+        ?item p:P131 ?statement1.
+        ?statement1 (ps:P131/(wdt:P131*)) wd:Q40030.
+        FILTER(EXISTS { ?statement1 prov:wasDerivedFrom ?reference. })
+      }
+    }
+    LIMIT 100
+  }
+}
