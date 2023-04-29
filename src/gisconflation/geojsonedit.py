@@ -24,14 +24,16 @@
 # ==============================================================================
 
 import argparse
-import csv
-import dataclasses
+
+# import csv
+# import dataclasses
 import json
 import sys
-import logging
+
+# import logging
 from typing import List, Type
 
-from .util import AttributesEditor
+from .util import AttributesEditor, parse_argument_values
 
 # from haversine import haversine, Unit
 
@@ -124,10 +126,24 @@ class Cli:
             "Use '||' to divide the source key and target key. "
             "Accept multiple values. "
             "Example: "
-            "--rename-attribute='NAME||name' --rename-attribute='CITY||addr:city'",
+            "--rename-attribute='NAME|||name' --rename-attribute='CITY|||addr:city'",
             dest="rename_attr",
             nargs="?",
             action="append",
+        )
+
+        # Old versions of csv2geojson uses only one |
+        edit.add_argument(
+            "--value-fixed",
+            help="Define a fixed string for every value of a column, "
+            "For multiple, use multiple times this parameter. "
+            "Source vs destiny column must be divided by |||. "
+            "Example: <[ --value-fixed='source|||BR:DATASUS' ]>",
+            dest="value_fixed",
+            nargs="?",
+            # type=lambda x: x.split("||"),
+            action="append",
+            default=None,
         )
 
         filter = parser.add_argument_group("Options for filter input items completely")
@@ -147,8 +163,12 @@ class Cli:
         normalize_prop = True
         skip_invalid_geometry = True
 
+        # raise ValueError(parse_argument_values(pyargs.value_fixed))
+        # print(parse_argument_values(pyargs.value_fixed))
+
         gitem = GeoJSONItemEditor(
             rename_attr=parse_argument_values(pyargs.rename_attr),
+            value_fixed=parse_argument_values(pyargs.value_fixed),
             normalize_prop=normalize_prop,
             skip_invalid_geometry=skip_invalid_geometry,
         )
@@ -223,18 +243,20 @@ class GeoJSONItemEditor:
     def __init__(
         self,
         rename_attr: dict = None,
+        value_fixed: dict = None,
         normalize_prop: bool = True,
         skip_invalid_geometry: bool = True,
     ) -> None:
         self.rename_attr = rename_attr
         self.normalize_prop = normalize_prop
+        self.value_fixed = value_fixed
         self.skip_invalid_geometry = skip_invalid_geometry
 
         self._attr_editor = AttributesEditor(
             rename_attr=rename_attr,
+            value_fixed=value_fixed,
             normalize_prop=normalize_prop,
         )
-
 
         # print(self.rename_attr)
         # pass
@@ -257,7 +279,6 @@ class GeoJSONItemEditor:
                 return False
 
         if "properties" in result:
-
             result["properties"] = self._attr_editor.edit(result["properties"])
 
             # if self.rename_attr is not None and len(self.rename_attr.keys()) > 0:
@@ -278,21 +299,21 @@ class GeoJSONItemEditor:
         return result
 
 
-def parse_argument_values(arguments: list, delimiter: str = "||") -> dict:
-    if not arguments or len(arguments) == 0 or not arguments[0]:
-        return None
+# def parse_argument_values(arguments: list, delimiter: str = "||") -> dict:
+#     if not arguments or len(arguments) == 0 or not arguments[0]:
+#         return None
 
-    result = {}
-    for item in arguments:
-        # print('__', item, item.find(delimiter))
-        if item.find(delimiter) > -1:
-            _key, _val = item.split(delimiter)
-            result[_key] = _val
-        else:
-            result[item] = True
+#     result = {}
+#     for item in arguments:
+#         # print('__', item, item.find(delimiter))
+#         if item.find(delimiter) > -1:
+#             _key, _val = item.split(delimiter)
+#             result[_key] = _val
+#         else:
+#             result[item] = True
 
-    # print('__f', result)
-    return result
+#     # print('__f', result)
+#     return result
 
 
 def exec_from_console_scripts():
