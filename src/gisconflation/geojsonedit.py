@@ -31,6 +31,8 @@ import sys
 import logging
 from typing import List, Type
 
+from .util import AttributesEditor
+
 # from haversine import haversine, Unit
 
 # # from shapely.geometry import Polygon, Point
@@ -227,6 +229,13 @@ class GeoJSONItemEditor:
         self.rename_attr = rename_attr
         self.normalize_prop = normalize_prop
         self.skip_invalid_geometry = skip_invalid_geometry
+
+        self._attr_editor = AttributesEditor(
+            rename_attr=rename_attr,
+            normalize_prop=normalize_prop,
+        )
+
+
         # print(self.rename_attr)
         # pass
 
@@ -248,21 +257,24 @@ class GeoJSONItemEditor:
                 return False
 
         if "properties" in result:
-            if self.rename_attr is not None and len(self.rename_attr.keys()) > 0:
-                for key, val in self.rename_attr.items():
-                    if key in result["properties"]:
-                        result["properties"][val] = result["properties"].pop(key)
 
-            if self.normalize_prop:
-                prop_new = {}
-                # print(result["properties"])
-                for key, val in sorted(result["properties"].items()):
-                    if isinstance(val, str):
-                        val = val.strip()
-                    if not val:
-                        continue
-                    prop_new[key] = val
-                result["properties"] = prop_new
+            result["properties"] = self._attr_editor.edit(result["properties"])
+
+            # if self.rename_attr is not None and len(self.rename_attr.keys()) > 0:
+            #     for key, val in self.rename_attr.items():
+            #         if key in result["properties"]:
+            #             result["properties"][val] = result["properties"].pop(key)
+
+            # if self.normalize_prop:
+            #     prop_new = {}
+            #     # print(result["properties"])
+            #     for key, val in sorted(result["properties"].items()):
+            #         if isinstance(val, str):
+            #             val = val.strip()
+            #         if not val:
+            #             continue
+            #         prop_new[key] = val
+            #     result["properties"] = prop_new
         return result
 
 
