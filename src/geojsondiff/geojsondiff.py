@@ -531,9 +531,10 @@ class DatasetInMemory:
 
         if (
             not item
+            or not isinstance(item, dict)
             or "geometry" not in item
+            or not item["geometry"]
             or "coordinates" not in item["geometry"]
-            or "type" not in item
         ):
             # Really bad input item (we still count on index)
             self.items.append(False)
@@ -863,6 +864,10 @@ class GeojsonCompare:
         for index_a in range(0, len(self.a.items)):
             _item_a = self.a.items[index_a]
 
+            if not _item_a:
+                # Skip very bad input (invalid geometry)
+                continue
+
             _matrix = self.matrix[index_a]
 
             final_properties = {}
@@ -1065,6 +1070,9 @@ class GeojsonCompare:
 
         for index_a in range(0, len(self.a.items)):
             _item_a = self.a.items[index_a]
+            if not _item_a:
+                # Skip very bad input (invalid geometry)
+                continue
 
             _matrix = self.matrix[index_a]
 

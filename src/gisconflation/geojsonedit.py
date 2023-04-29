@@ -143,10 +143,12 @@ class Cli:
         #     logger.addHandler(ch)
 
         normalize_prop = True
+        skip_invalid_geometry = True
 
         gitem = GeoJSONItemEditor(
             rename_attr=parse_argument_values(pyargs.rename_attr),
             normalize_prop=normalize_prop,
+            skip_invalid_geometry=skip_invalid_geometry,
         )
         gedit = GeoJSONFileEditor(pyargs.input, gitem)
         gedit.output()
@@ -194,7 +196,9 @@ class GeoJSONFileEditor:
 
         result = {"features": []}
         for item in json_data["features"]:
-            result["features"].append(self.gitem.edit(item))
+            edited_item = self.gitem.edit(item)
+            if edited_item is not False:
+                result["features"].append(edited_item)
 
         # print(self.inputdata)
         # print(json_data)
@@ -214,9 +218,15 @@ class GeoJSONFileEditor:
 
 
 class GeoJSONItemEditor:
-    def __init__(self, rename_attr: dict = None, normalize_prop: bool = True) -> None:
+    def __init__(
+        self,
+        rename_attr: dict = None,
+        normalize_prop: bool = True,
+        skip_invalid_geometry: bool = True,
+    ) -> None:
         self.rename_attr = rename_attr
         self.normalize_prop = normalize_prop
+        self.skip_invalid_geometry = skip_invalid_geometry
         # print(self.rename_attr)
         # pass
 
@@ -224,6 +234,19 @@ class GeoJSONItemEditor:
         # return item
         # print(item)
         result = item
+
+        if self.skip_invalid_geometry:
+            if (
+                not item
+                or not isinstance(item, dict)
+                or "geometry" not in item
+                or not item["geometry"]
+                or "coordinates" not in item["geometry"]
+                # or not item["geometry"]["coordinates"]
+            ):
+                # @TODO make better checks, like if is Type=Point, etc
+                return False
+
         if "properties" in result:
             if self.rename_attr is not None and len(self.rename_attr.keys()) > 0:
                 for key, val in self.rename_attr.items():
