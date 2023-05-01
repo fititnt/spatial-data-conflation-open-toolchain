@@ -146,6 +146,18 @@ class Cli:
             default=None,
         )
 
+        edit.add_argument(
+            "--value-norm-name-place",
+            help="Column to normalize value (strategy: name of place). "
+            "Accept multiple options. Example: "
+            "--value-norm-name-place='name' --value-norm-name-place='alt_name'",
+            dest="value_name_place",
+            nargs="?",
+            # type=lambda x: x.split("||"),
+            action="append",
+            default=None,
+        )
+
         filter = parser.add_argument_group("Options for filter input items completely")
 
         return parser.parse_args()
@@ -169,6 +181,7 @@ class Cli:
         gitem = GeoJSONItemEditor(
             rename_attr=parse_argument_values(pyargs.rename_attr),
             value_fixed=parse_argument_values(pyargs.value_fixed),
+            value_name_place=pyargs.value_name_place,
             normalize_prop=normalize_prop,
             skip_invalid_geometry=skip_invalid_geometry,
         )
@@ -244,17 +257,20 @@ class GeoJSONItemEditor:
         self,
         rename_attr: dict = None,
         value_fixed: dict = None,
+        value_name_place: list = None,
         normalize_prop: bool = True,
         skip_invalid_geometry: bool = True,
     ) -> None:
         self.rename_attr = rename_attr
         self.normalize_prop = normalize_prop
         self.value_fixed = value_fixed
+        self.value_name_place = value_name_place
         self.skip_invalid_geometry = skip_invalid_geometry
 
         self._attr_editor = AttributesEditor(
             rename_attr=rename_attr,
             value_fixed=value_fixed,
+            value_name_place=value_name_place,
             normalize_prop=normalize_prop,
         )
 
