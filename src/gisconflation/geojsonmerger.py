@@ -107,9 +107,12 @@ class Cli:
             epilog=__EPILOGUM__,
         )
 
-        # @TODO maybe implement GeoJSONSeq
-        parser.add_argument("input", help="Input GeoJSON / GeoJSONSeq. Use - for stdin")
-        # parser.add_argument("geodataset_b", help="GeoJSON dataset 'B'")
+        parser.add_argument("geodataset_a", help="GeoJSON dataset 'A'")
+        parser.add_argument("geodataset_b", help="GeoJSON dataset 'B'")
+
+        # # @TODO maybe implement GeoJSONSeq
+        # parser.add_argument("input", help="Input GeoJSON / GeoJSONSeq. Use - for stdin")
+        # # parser.add_argument("geodataset_b", help="GeoJSON dataset 'B'")
 
         parser.add_argument(
             "--format-output",
@@ -175,26 +178,146 @@ class Cli:
         #     ch = logging.StreamHandler()
         #     logger.addHandler(ch)
 
-        normalize_prop = True
-        skip_invalid_geometry = True
+        # normalize_prop = True
+        # skip_invalid_geometry = True
 
-        # raise ValueError(parse_argument_values(pyargs.value_fixed))
-        # print(parse_argument_values(pyargs.value_fixed))
+        # # raise ValueError(parse_argument_values(pyargs.value_fixed))
+        # # print(parse_argument_values(pyargs.value_fixed))
 
-        gitem = GeoJSONItemEditor(
-            rename_attr=parse_argument_values(pyargs.rename_attr),
-            value_fixed=parse_argument_values(pyargs.value_fixed),
-            value_name_place=pyargs.value_name_place,
-            normalize_prop=normalize_prop,
-            skip_invalid_geometry=skip_invalid_geometry,
+        # gitem = GeoJSONItemEditor(
+        #     rename_attr=parse_argument_values(pyargs.rename_attr),
+        #     value_fixed=parse_argument_values(pyargs.value_fixed),
+        #     value_name_place=pyargs.value_name_place,
+        #     normalize_prop=normalize_prop,
+        #     skip_invalid_geometry=skip_invalid_geometry,
+        # )
+        # gedit = GeoJSONFileEditor(pyargs.input, gitem)
+        # gedit.output()
+
+        # skip_invalid_geometry: True
+
+        # # geodiff.debug()
+        gmerger = GeoJSONMerger(
+            geodataset_a=pyargs.geodataset_a,
+            geodataset_b=pyargs.geodataset_b,
+            # skip_invalid_geometry=True,
         )
-        gedit = GeoJSONFileEditor(pyargs.input, gitem)
-        gedit.output()
+        # print("TODO")
 
-        # geodiff.debug()
+        gmerger.output()
+        # gmerger.debug()
         return self.EXIT_OK
 
 
+class GeoJSONMerger:
+    def __init__(self, geodataset_a, geodataset_b) -> None:
+        self.geodataset_a = geodataset_a
+        self.geodataset_b = geodataset_b
+
+        # @TODO make it flexible
+        self.key_a = "ref:CNES"
+        self.key_b = "CO_CNES"
+
+        self.in_a = []
+        self.in_b = []
+        self.out = []
+        self.out_dict = {}
+
+        self._init_a()
+        self._init_b()
+
+    def _init_a(self) -> None:
+        a_str = self._loader_temp(self.geodataset_a)
+
+        a_data = json.loads(a_str)
+        for item in a_data["features"]:
+            if not "properties" in item or not item["properties"]:
+                raise SyntaxError(item)
+
+            if not self.key_a in item["properties"]:
+                raise SyntaxError([self.key_a, item])
+
+            key_active = str(item["properties"][self.key_a])
+            if key_active in self.out_dict:
+                # Improve this err handling
+                print(f"Repeated value {key_active}")
+            self.out_dict[key_active] = item
+            # print(item)
+
+    def _init_b(self) -> None:
+        b_str = self._loader_temp(self.geodataset_b)
+
+        b_data = json.loads(b_str)
+
+        for item in b_data["features"]:
+            if not "properties" in item or not item["properties"] or not isinstance(item["properties"], dict):
+                continue
+                # raise SyntaxError(item)
+
+            if not self.key_b in item["properties"]:
+                raise SyntaxError([self.key_b, item])
+
+            key_active = str(item["properties"][self.key_b])
+
+            if key_active not in self.out_dict:
+                continue
+
+            # raise ValueError('deu')
+            # print(key_active, type(key_active))
+            # print(self.out_dict[key_active])
+            # print('')
+            # print(self.out_dict[key_active]["properties"])
+            # print(item)
+
+            _props = self.out_dict[key_active]["properties"]
+
+            for _key, _val in item["properties"].items():
+                # @TODO allow some filtering
+                _props[_key] = _val
+
+            # _props = {
+            #     **self.out_dict[key_active]["properties"],
+            #     **item["properties"][self.key_b],
+            # }
+            # self.out_dict[key_active]["properties"].update(
+            #     item["properties"][self.key_b]
+            # )
+
+    def _loader_temp(self, input_ptr: str):
+        # @TODO make this efficient for very large files
+        data = None
+        if input_ptr == "-":
+            temp = []
+            for line in sys.stdin:
+                # temp.append(line.strip())
+                temp.append(line.rstrip())
+                # temp.append(line)
+
+            data = "\n".join(temp)
+        else:
+            with open(input_ptr, "r") as _file:
+                data = _file.read()
+            # pass
+
+        return data
+
+    def debug(self):
+        print("todo")
+
+    def output(self):
+        # @TODO keep other metadata at top level, if exist
+        print('{"type": "FeatureCollection", "features": [')
+        count = len(self.out_dict.keys())
+        for _key, item in self.out_dict.items():
+            count -= 1
+            line_str = json.dumps(item, ensure_ascii=False)
+            if count > 0:
+                line_str += ","
+            print(line_str)
+        print("]}")
+
+
+# geojsonmerger tests/temp/dataset_a.geojson tests/temp/dataset_b.geojson
 # ./src/gisconflation/geojsonmerger.py tests/data/geojson-simple.geojson
 # cat tests/data/geojson-simple.geojson | ./src/gisconflation/geojsonmerger.py -
 # ./src/gisconflation/geojsonmerger.py tests/data/geojson-seq.geojsonl
