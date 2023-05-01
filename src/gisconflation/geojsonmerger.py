@@ -24,22 +24,26 @@
 # ==============================================================================
 
 import argparse
+import csv
 
 # import csv
 # import dataclasses
 import json
+import re
 import sys
 
+from gisconflation.util import AttributesEditor
+
 # import logging
-from typing import List, Type
+# from typing import List, Type
 
-from .util import AttributesEditor, parse_argument_values
+# from .util import AttributesEditor, parse_argument_values
 
-# from haversine import haversine, Unit
+# geojsonmerger tests/temp/dataset_a.geojson tests/temp/dataset_b.geojson
+# geojsonmerger tests/temp/dataset_a.geojson tests/temp/dataset_b.geojson > tests/temp/dataset_a+b.geojson
 
-# # from shapely.geometry import Polygon, Point
-# from shapely.geometry import Polygon
-# from xml.sax.saxutils import escape
+# geojsonmerger tests/temp/dataset_a.geojson /workspace/git/fititnt/openstreetmap-vs-dados-abertos-brasil/data/tmp/DATASUS-tbEstabelecimento.csv
+# geojsonmerger tests/temp/dataset_a.geojson /workspace/git/fititnt/openstreetmap-vs-dados-abertos-brasil/data/tmp/DATASUS-tbEstabelecimento.csv > tests/temp/dataset_csv_a+b.geojson
 
 
 __VERSION__ = "0.1.0"
@@ -217,11 +221,29 @@ class GeoJSONMerger:
         # @TODO make it flexible
         self.key_a = "ref:CNES"
         self.key_b = "CO_CNES"
+        self.map_b = {
+            "NU_CNPJ": "ref:vatin",
+            "NU_CNPJ_MANTENEDORA": "operator:ref:vatin",
+            "CO_CEP": "addr:postcode",
+        }
+        self.map_b_callback = {
+            "NU_CNPJ": lambda x: f"BR{x}",
+            "NU_CNPJ_MANTENEDORA": lambda x: f"BR{x}",
+            "CO_CEP": lambda x: re.sub(r"(\d{5})(\d{3})", r"\1-\2", x),
+        }
 
         self.in_a = []
         self.in_b = []
         self.out = []
         self.out_dict = {}
+
+        self.statistics = {
+            "a_items": 0,
+            "a_items_valid": 0,
+            "b_items": 0,
+            "b_items_valid": 0,
+            "ab_match": 0,
+        }
 
         self._init_a()
         self._init_b()
@@ -231,6 +253,7 @@ class GeoJSONMerger:
 
         a_data = json.loads(a_str)
         for item in a_data["features"]:
+            self.statistics["a_items"] += 1
             if not "properties" in item or not item["properties"]:
                 raise SyntaxError(item)
 
@@ -241,16 +264,68 @@ class GeoJSONMerger:
             if key_active in self.out_dict:
                 # Improve this err handling
                 print(f"Repeated value {key_active}")
+
+            self.statistics["a_items_valid"] += 1
             self.out_dict[key_active] = item
             # print(item)
 
     def _init_b(self) -> None:
+        # @TODO refactor this part
+        if self.geodataset_b.lower().endswith((".csv", ".tsv", ".tab")):
+            encoding = "latin-1"
+            # _delimiter = get_delimiter(self.geodataset_b, encoding)
+            _delimiter = ";"
+
+            with open(self.geodataset_b, "r", encoding=encoding) as csvfile:
+                reader = csv.DictReader(csvfile, delimiter=_delimiter)
+                aedit = AttributesEditor(normalize_prop=True)
+                for row in reader:
+                    self.statistics["b_items"] += 1
+                    if not self.key_b in row:
+                        raise SyntaxError([self.key_b, item])
+
+                    key_active = str(row[self.key_b])
+
+                    self.statistics["b_items_valid"] += 1
+                    if key_active not in self.out_dict:
+                        continue
+                    self.statistics["ab_match"] += 1
+
+                    _props = self.out_dict[key_active]["properties"]
+                    for _key, _val in row.items():
+                        # @TODO allow some filtering
+                        # _props[_key] = _val
+
+                        if self.map_b_callback and _key in self.map_b_callback:
+                            if _val:
+                                _val = self.map_b_callback[_key](_val)
+
+                        if self.map_b and _key in self.map_b:
+                            _newkey = self.map_b[_key]
+                            _props[_newkey] = _val
+                        else:
+                            _props[f"__b_{_key}"] = _val
+
+                    _props2 = aedit.edit(_props)
+
+                    # self.out_dict[key_active]["properties"] = _props
+                    self.out_dict[key_active]["properties"] = _props2
+                    # print(row)
+                    # print(row['first_name'], row['last_name'])
+
+            return True
+
         b_str = self._loader_temp(self.geodataset_b)
 
         b_data = json.loads(b_str)
 
         for item in b_data["features"]:
-            if not "properties" in item or not item["properties"] or not isinstance(item["properties"], dict):
+            self.statistics["b_items"] += 1
+            if (
+                not "properties" in item
+                or not item["properties"]
+                or not isinstance(item["properties"], dict)
+            ):
                 continue
                 # raise SyntaxError(item)
 
@@ -259,9 +334,12 @@ class GeoJSONMerger:
 
             key_active = str(item["properties"][self.key_b])
 
+            self.statistics["b_items_valid"] += 1
+
             if key_active not in self.out_dict:
                 continue
 
+            self.statistics["ab_match"] += 1
             # raise ValueError('deu')
             # print(key_active, type(key_active))
             # print(self.out_dict[key_active])
@@ -273,7 +351,8 @@ class GeoJSONMerger:
 
             for _key, _val in item["properties"].items():
                 # @TODO allow some filtering
-                _props[_key] = _val
+                # _props[_key] = _val
+                _props[f"__b_{_key}"] = _val
 
             # _props = {
             #     **self.out_dict[key_active]["properties"],
@@ -282,6 +361,7 @@ class GeoJSONMerger:
             # self.out_dict[key_active]["properties"].update(
             #     item["properties"][self.key_b]
             # )
+            self.out_dict[key_active]["properties"] = _props
 
     def _loader_temp(self, input_ptr: str):
         # @TODO make this efficient for very large files
@@ -302,7 +382,8 @@ class GeoJSONMerger:
         return data
 
     def debug(self):
-        print("todo")
+        # print("todo")
+        print(self.statistics)
 
     def output(self):
         # @TODO keep other metadata at top level, if exist
@@ -316,146 +397,15 @@ class GeoJSONMerger:
             print(line_str)
         print("]}")
 
-
-# geojsonmerger tests/temp/dataset_a.geojson tests/temp/dataset_b.geojson
-# ./src/gisconflation/geojsonmerger.py tests/data/geojson-simple.geojson
-# cat tests/data/geojson-simple.geojson | ./src/gisconflation/geojsonmerger.py -
-# ./src/gisconflation/geojsonmerger.py tests/data/geojson-seq.geojsonl
-class GeoJSONFileEditor:
-    """geojsonmergeror
-
-    @TODO implement read line-by-line large files (in special GeoJSONSeq)
-    """
-
-    def __init__(self, input_ptr: str, gitem: Type["GeoJSONItemEditor"]) -> None:
-        self.gitem = gitem
-        self.inputdata = self._loader_temp(input_ptr)
-        # pass
-
-    def _loader_temp(self, input_ptr: str):
-        # @TODO make this efficient for very large files
-        data = None
-        if input_ptr == "-":
-            temp = []
-            for line in sys.stdin:
-                # temp.append(line.strip())
-                temp.append(line.rstrip())
-                # temp.append(line)
-
-            data = "\n".join(temp)
-        else:
-            with open(input_ptr, "r") as _file:
-                data = _file.read()
-            # pass
-
-        return data
-
-    def output(self):
-        json_data = json.loads(self.inputdata)
-        if not json_data or "features" not in json_data:
-            raise SyntaxError("bad input data")
-
-        result = {"features": []}
-        for item in json_data["features"]:
-            edited_item = self.gitem.edit(item)
-            if edited_item is not False:
-                result["features"].append(edited_item)
-
-        # print(self.inputdata)
-        # print(json_data)
-
-        # @TODO keep other metadata at top level, if exist
-        print('{"type": "FeatureCollection", "features": [')
-        count = len(json_data["features"])
-        for item in json_data["features"]:
-            count -= 1
-            line_str = json.dumps(item, ensure_ascii=False)
-            if count > 0:
-                line_str += ","
-            print(line_str)
-        print("]}")
-
-        # print(json.dumps(result, ensure_ascii=False))
+        # print("")
+        # self.debug()
 
 
-class GeoJSONItemEditor:
-    def __init__(
-        self,
-        rename_attr: dict = None,
-        value_fixed: dict = None,
-        value_name_place: list = None,
-        normalize_prop: bool = True,
-        skip_invalid_geometry: bool = True,
-    ) -> None:
-        self.rename_attr = rename_attr
-        self.normalize_prop = normalize_prop
-        self.value_fixed = value_fixed
-        self.value_name_place = value_name_place
-        self.skip_invalid_geometry = skip_invalid_geometry
-
-        self._attr_editor = AttributesEditor(
-            rename_attr=rename_attr,
-            value_fixed=value_fixed,
-            value_name_place=value_name_place,
-            normalize_prop=normalize_prop,
-        )
-
-        # print(self.rename_attr)
-        # pass
-
-    def edit(self, item: dict):
-        # return item
-        # print(item)
-        result = item
-
-        if self.skip_invalid_geometry:
-            if (
-                not item
-                or not isinstance(item, dict)
-                or "geometry" not in item
-                or not item["geometry"]
-                or "coordinates" not in item["geometry"]
-                # or not item["geometry"]["coordinates"]
-            ):
-                # @TODO make better checks, like if is Type=Point, etc
-                return False
-
-        if "properties" in result:
-            result["properties"] = self._attr_editor.edit(result["properties"])
-
-            # if self.rename_attr is not None and len(self.rename_attr.keys()) > 0:
-            #     for key, val in self.rename_attr.items():
-            #         if key in result["properties"]:
-            #             result["properties"][val] = result["properties"].pop(key)
-
-            # if self.normalize_prop:
-            #     prop_new = {}
-            #     # print(result["properties"])
-            #     for key, val in sorted(result["properties"].items()):
-            #         if isinstance(val, str):
-            #             val = val.strip()
-            #         if not val:
-            #             continue
-            #         prop_new[key] = val
-            #     result["properties"] = prop_new
-        return result
-
-
-# def parse_argument_values(arguments: list, delimiter: str = "||") -> dict:
-#     if not arguments or len(arguments) == 0 or not arguments[0]:
-#         return None
-
-#     result = {}
-#     for item in arguments:
-#         # print('__', item, item.find(delimiter))
-#         if item.find(delimiter) > -1:
-#             _key, _val = item.split(delimiter)
-#             result[_key] = _val
-#         else:
-#             result[item] = True
-
-#     # print('__f', result)
-#     return result
+# https://stackoverflow.com/questions/3952132/how-do-you-dynamically-identify-unknown-delimiters-in-a-data-file
+def get_delimiter(file_path: str, encoding="utf-8") -> str:
+    with open(file_path, "r", encoding=encoding) as csvfile:
+        delimiter = str(csv.Sniffer().sniff(csvfile.read()).delimiter)
+        return delimiter
 
 
 def exec_from_console_scripts():
