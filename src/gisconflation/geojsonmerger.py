@@ -31,6 +31,7 @@ import csv
 import json
 import re
 import sys
+from csv2geojson.csv2geojson import _zzz_format_phone_br
 
 from gisconflation.util import AttributesEditor
 
@@ -44,6 +45,7 @@ from gisconflation.util import AttributesEditor
 
 # geojsonmerger tests/temp/dataset_a.geojson /workspace/git/fititnt/openstreetmap-vs-dados-abertos-brasil/data/tmp/DATASUS-tbEstabelecimento.csv
 # geojsonmerger tests/temp/dataset_a.geojson /workspace/git/fititnt/openstreetmap-vs-dados-abertos-brasil/data/tmp/DATASUS-tbEstabelecimento.csv > tests/temp/dataset_csv_a+b.geojson
+# geojsonmerger tests/temp/iede.rs.gov.br_Hospitais-no-RS_v2.geojson /workspace/git/fititnt/openstreetmap-vs-dados-abertos-brasil/data/tmp/DATASUS-tbEstabelecimento.csv > tests/temp/iede.rs.gov.br_Hospitais-no-RS_v2_plusmetadata.geojson
 
 
 __VERSION__ = "0.1.0"
@@ -225,11 +227,15 @@ class GeoJSONMerger:
             "NU_CNPJ": "ref:vatin",
             "NU_CNPJ_MANTENEDORA": "operator:ref:vatin",
             "CO_CEP": "addr:postcode",
+            "NO_EMAIL": "email",
+            "NU_TELEFONE": "phone",
         }
         self.map_b_callback = {
             "NU_CNPJ": lambda x: f"BR{x}",
             "NU_CNPJ_MANTENEDORA": lambda x: f"BR{x}",
             "CO_CEP": lambda x: re.sub(r"(\d{5})(\d{3})", r"\1-\2", x),
+            "NO_EMAIL": lambda x: x.lower(),
+            "NU_TELEFONE": _zzz_format_phone_br,
         }
 
         self.in_a = []

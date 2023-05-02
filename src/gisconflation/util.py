@@ -95,3 +95,27 @@ def _zzz_format_name_place_br(value: str):
     term2 = term2.replace(" Do ", " do ")
 
     return term2
+
+def _zzz_format_phone_br(value: str):
+    if not value:
+        return False
+
+    if value.startswith("+"):
+        return value
+
+    # @TODO deal with more than one number
+
+    if value.startswith("(") and value.find(")") > -1:
+        _num_com_ddd = "".join(filter(str.isdigit, value))
+
+        _regiao = _num_com_ddd[0:2]
+        _num_loc = _num_com_ddd[2:]
+        _num_loc_p2 = _num_loc[-4:]
+        _num_loc_p1 = _num_loc.replace(_num_loc_p2, "")
+        # return "+55 " + _regiao + ' ' + _num_com_ddd[2:]
+        return "+55 " + _regiao + " " + _num_loc_p1 + " " + _num_loc_p2
+
+    # if value.isnumeric():
+    #     if len(value) == 8:
+    #         return re.sub(r"(\d{5})(\d{3})", r"\1-\2", value)
+    return False
