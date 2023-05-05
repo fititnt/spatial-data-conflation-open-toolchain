@@ -4,6 +4,7 @@ import string
 # https://pypi.org/project/Levenshtein/
 # pip install levenshtein
 import Levenshtein
+# import unicodedata
 
 
 class AttributesEditor:
@@ -65,23 +66,144 @@ class AttributesEditor:
 class LevenshteinHelper:
     """LevenshteinHelper is ...
     @see https://maxbachmann.github.io/Levenshtein/levenshtein.html
+    pip install levenshtein
     """
 
-    def __init__(self) -> None:
-        pass
+    def __init__(
+        self, synonymous: dict = None, tokens: dict = None, normalize: bool = True
+    ) -> None:
+        self.synonymous = synonymous
+        self.tokens = tokens
+        self.normalize = normalize
 
-    def test(self) -> str:
-        """_summary_
+    def _apply_synonymous(self, term: str) -> str:
+        if not self.synonymous or len(self.synonymous.keys()) == 0:
+            return term
+
+        parts = term.split(" ")
+        result = []
+        for item in parts:
+            if item in self.synonymous:
+                result.append(self.synonymous[item])
+            else:
+                result.append(item)
+
+        return " ".join(result)
+
+    def _apply_internal_tokens(self, term: str) -> str:
+        if not self.tokens or len(self.tokens.keys()) == 0:
+            return term
+
+        parts = term.split(" ")
+        result = []
+        for item in parts:
+            if item in self.tokens:
+                result.append(self.tokens[item])
+            else:
+                result.append(item)
+
+        return " ".join(result)
+
+    def _normalize_term(self, term: str) -> str:
+        if not isinstance(term, str):
+            term = str(term)
+        # if term is not:
+        #     return None
+        term2 = term.lower()
+        term3 = re.sub("\\s\\s+", " ", term2)
+        term4 = self._normalize_term_acents(term3)
+        term5 = self._apply_synonymous(term4)
+        return term5
+
+    def _normalize_term_acents(self, term: str) -> str:
+        # Ideally, this should be better than simple replacement
+        # @see https://stackoverflow.com/questions/517923
+        # @see https://pypi.org/project/Unidecode/
+        # pip install Unidecode
+        new = term.lower()
+
+        # Obviously incomplete
+        new = re.sub(r"[àáâãäå]", "a", new)
+        new = re.sub(r"[èéêë]", "e", new)
+        new = re.sub(r"[ìíîï]", "i", new)
+        new = re.sub(r"[òóôõö]", "o", new)
+        return new
+
+    def get_term_tokenized(self, term: str) -> str:
+        """get_term_tokenized Return a term expanded and normalized
+        Args:
+            term (str): The input term
 
         Returns:
-            str: _description_
+            str: the result
 
-        >>> lh = LevenshteinHelper()
-        >>> lh.test()
-        'test'
+        >>> synonymous = {'7': "sete"}
+        >>> tokens = {'avenida': "<PPREFIX>", 'rua': "<PPREFIX>"}
+        >>> lh = LevenshteinHelper(synonymous=synonymous)
+        >>> lh.get_term_tokenized('rua sete de setembro')
+        'rua sete de setembro'
         """
         # return Levenshtein.distance("teste", "testeee")
-        return "test"
+
+        # if self.normalize:
+        #     term = self._normalize_term(term)
+        term = self._normalize_term(term)
+        term2 = self._apply_synonymous(term)
+
+        return term2
+
+    def get_term_tokenized_internal(self, term: str) -> str:
+        """get_term_tokenized Return a term expanded and normalized
+        Args:
+            term (str): The input term
+
+        Returns:
+            str: the result
+
+        >>> synonymous = {'7': "sete"}
+        >>> tokens = {'avenida': "<PPREFIX>", 'rua': "<PPREFIX>"}
+        >>> lh = LevenshteinHelper(synonymous=synonymous)
+        >>> lh.get_term_tokenized('TESTÉ')
+        'teste'
+
+        >>> lh.get_term_tokenized_internal('rua sete de setembro')
+        'rua sete de setembro'
+        """
+        term = self._normalize_term(term)
+        term2 = self._apply_synonymous(term)
+        term3 = self._apply_internal_tokens(term2)
+
+        return term3
+
+    def distance(self, ref_term: str, alt_term: str) -> int:
+        """distance
+
+        Args:
+            ref_term (str): reference term
+            alt_term (str): alternative term
+
+        Returns:
+            int: distance value
+
+        >>> synonymous = {'7': "sete"}
+        >>> tokens = {'avenida': "<PPREFIX>", 'rua': "<PPREFIX>"}
+        >>> lh = LevenshteinHelper(synonymous=synonymous, tokens=tokens)
+
+        #>>> lh.distance('Rua 7 de Setembro', 'rua sete de setembro')
+        #0
+
+        >>> lh.distance('Avenida 7 de Setembro', 'rua sete de setembro')
+        0
+        """
+        if self.normalize:
+            ref_term = self.get_term_tokenized_internal(ref_term)
+            alt_term = self.get_term_tokenized_internal(alt_term)
+
+        # print(self.normalize)
+        # print(ref_term)
+        # print(alt_term)
+
+        return Levenshtein.distance(ref_term, alt_term)
 
 
 # def parse_argument_values(arguments: list, delimiter: str = "||") -> dict:
