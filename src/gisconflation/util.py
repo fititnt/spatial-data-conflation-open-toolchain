@@ -4,6 +4,7 @@ import string
 # https://pypi.org/project/Levenshtein/
 # pip install levenshtein
 import Levenshtein
+
 # import unicodedata
 
 
@@ -61,6 +62,12 @@ class AttributesEditor:
             result = prop_new
 
         return result
+
+
+class DictionaryHelper:
+    # @TODO impelement
+    def __init__(self) -> None:
+        pass
 
 
 class LevenshteinHelper:
@@ -204,6 +211,15 @@ class LevenshteinHelper:
         # print(alt_term)
 
         return Levenshtein.distance(ref_term, alt_term)
+
+    def sorted(self, ref_terms: list, alt_terms: list, alt_original: list) -> list:
+        # @TODO sort the alt_original by ref_terms VS alt_terms
+        return alt_original
+
+    def get_sorted_alternatives(self, ref_term: str, alt_terms: list) -> list:
+        alt_terms_sorted_index = range(0, len(alt_terms))
+
+        return alt_terms_sorted_index
 
 
 # def parse_argument_values(arguments: list, delimiter: str = "||") -> dict:

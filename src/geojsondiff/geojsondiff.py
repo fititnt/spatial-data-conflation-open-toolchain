@@ -42,6 +42,8 @@ from haversine import haversine, Unit
 from shapely.geometry import Polygon
 from xml.sax.saxutils import escape
 
+from gisconflation.util import LevenshteinHelper
+
 
 __VERSION__ = "0.6.1"
 
@@ -196,6 +198,19 @@ class Cli:
             action="append",
         )
 
+        pivot.add_argument(
+            "--pivot-alias",
+            help="A weak (like name or description) attribute to order the matches. "
+            "Impefect. Never will return perfect match, even if exact the same. "
+            "Use '||' if attribute on A is not the same on the B. "
+            "Accept multiple values. "
+            "Example: "
+            "--pivot-alias'COMPANY_NAME||name' --pivot-alias'COMPANY_NAME||alt_name'",
+            dest="pivot_alias",
+            nargs="?",
+            action="append",
+        )
+
         prefilter = parser.add_argument_group("Pre-filter data before processing")
 
         prefilter.add_argument(
@@ -316,6 +331,7 @@ class Cli:
             # pivot_key_main=parse_argument_values(pyargs.pivot_key_main),
             pivot_key_main=pivot_key_main,
             pivot_attr_2=parse_argument_values(pyargs.pivot_attr_2),
+            pivot_alias=parse_argument_values(pyargs.pivot_alias),
         )
 
         cfilters = ConflationFilters(
@@ -496,10 +512,12 @@ class ConflationRules:
         distance_okay: int = None,
         pivot_key_main: list = None,
         pivot_attr_2: list = None,
+        pivot_alias: list = None,
     ) -> None:
         self.distance_okay = distance_okay
         self.pivot_key_main = pivot_key_main
         self.pivot_attr_2 = pivot_attr_2
+        self.pivot_alias = pivot_alias
 
 
 class DatasetInMemory:
@@ -712,6 +730,8 @@ class GeojsonCompare:
         """compute difference of B against A"""
         # for item in self.a.items:
 
+        levenshtein = LevenshteinHelper()
+
         if len(self.a.items) > 0:
             for index in range(0, len(self.a.items)):
                 if not self.a.items[index] or not self.a.items[index][1]:
@@ -769,6 +789,7 @@ class GeojsonCompare:
             # else:
             if self.a.items[index_a]:
                 candidates = []
+                candidates_aliases = []
                 for index_b in range(0, len(self.b.items)):
                     # print("oibb", len(self.b.items))
                     # print('a', self.a.items[index_a])
@@ -816,11 +837,40 @@ class GeojsonCompare:
                             # TODO sort by near
                             candidates.append((dist, index_b))
                             # self.matrix.append((index_b, MATCH_NEAR, round(dist, 2)))
+
+                            _aliasgroup = []
+                            if self.crules.pivot_alias:
+                                for refkey, altkey in self.crules.pivot_alias.items():
+                                    if altkey is True:
+                                        altkey = refkey
+                                if altkey in self.b.items[index_b][1]:
+                                    _aliasgroup.append(self.b.items[index_b][1][altkey])
+                                else:
+                                    _aliasgroup.append(None)
+                            # print(_aliasgroup)
+                            candidates_aliases.append(_aliasgroup)
                             found = True
                         # break
 
             if found == True and len(candidates) > 0:
-                it = ItemMatcher(self.a.items[index_a], candidates, self.crules)
+                # candidates_aliases = []
+                item_aliases = []
+                if self.crules.pivot_alias:
+                    for refkey, _altkey in self.crules.pivot_alias.items():
+                        if refkey in self.a.items[index_a][1]:
+                            item_aliases.append(self.a.items[index_a][1][refkey])
+                        else:
+                            item_aliases.append(None)
+                # print(item_aliases)
+
+                it = ItemMatcher(
+                    self.a.items[index_a],
+                    item_aliases,
+                    candidates,
+                    candidates_aliases,
+                    self.crules,
+                    levenshtein,
+                )
                 self.matrix.append(it.result())
 
                 _temp = it.result()
@@ -1153,18 +1203,29 @@ class GeojsonCompare:
 
 
 class ItemMatcher:
-    def __init__(self, item, candidates: list, crules: Type[ConflationRules]) -> None:
+    def __init__(
+        self,
+        item,
+        item_aliases: list,
+        candidates: list,
+        candidates_aliases: list,
+        crules: Type["ConflationRules"],
+        levenshtein: Type["LevenshteinHelper"],
+    ) -> None:
         self.item = item
         # self.candidates = candidates
         ## Improve this part
         self.candidates_valid = None
         self.automacher = None
         self.crules = crules
+        self.levenshtein = levenshtein
 
         self.compute(candidates)
 
     def compute(self, candidates):
         # candidates = self.candidates
+
+        # print(self.item, candidates)
 
         candidates_sorted = sorted(candidates, key=lambda tup: tup[0])
 
