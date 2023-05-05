@@ -36,6 +36,7 @@ import json
 import sys
 import logging
 from typing import List, Type
+import Levenshtein
 from haversine import haversine, Unit
 
 # from shapely.geometry import Polygon, Point
@@ -1220,14 +1221,17 @@ class ItemMatcher:
         self.crules = crules
         self.levenshtein = levenshtein
 
-        self.compute(candidates)
+        self.compute(item_aliases, candidates_aliases, candidates)
 
-    def compute(self, candidates):
+    def compute(self, item_aliases, candidates_aliases, candidates):
         # candidates = self.candidates
 
         # print(self.item, candidates)
-
-        candidates_sorted = sorted(candidates, key=lambda tup: tup[0])
+        _ext = []
+        for idx, item in enumerate(candidates):
+            _ext.append((item[0], item[1], item_aliases, candidates_aliases[idx]))
+        # candidates_sorted = sorted(candidates, key=lambda tup: tup[0])
+        candidates_sorted = sorted(_ext, key=lambda tup: Levenshtein.setratio(tup[2], tup[3]), reverse=True)
 
         # Improve this part
         self.candidates_valid = candidates_sorted
