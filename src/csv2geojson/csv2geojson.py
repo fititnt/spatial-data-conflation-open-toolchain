@@ -34,6 +34,8 @@ import re
 import sys
 import string
 
+from gisconflation.util import parse_argument_values
+
 
 __VERSION__ = "1.1.0"
 PROGRAM = "csv2geojson"
@@ -145,6 +147,18 @@ class Cli:
             dest="lon",
             required=True,
             nargs="?",
+        )
+
+        parser.add_argument(
+            "--filter-contain",
+            help="Filter one or more fields for contain a string"
+            "Use '|||' to divide the field and the string. "
+            "Accept multiple values. "
+            "Example: "
+            "--filter-contain='name|||hospital'",
+            dest="filter_contain",
+            nargs="?",
+            action="append",
         )
 
         parser.add_argument(
@@ -379,6 +393,7 @@ class Cli:
                     contain_or=_contain_or,
                     contain_and=_contain_and,
                     contain_and_in=_contain_and_in,
+                    filter_contain=parse_argument_values(pyargs.filter_contain),
                 ):
                     continue
 
@@ -486,7 +501,11 @@ def geojson_item(
 
 
 def geojson_item_contain(
-    item, contain_or: list = None, contain_and: list = None, contain_and_in: list = None
+    item,
+    contain_or: list = None,
+    contain_and: list = None,
+    contain_and_in: list = None,
+    filter_contain: list = None,
 ) -> bool:
     if not item:
         return False
@@ -531,6 +550,17 @@ def geojson_item_contain(
 
         if _val is not True and _val != item[_key]:
             return False
+
+    if filter_contain:
+        for _key, _val in filter_contain.items():
+            _val = _val.lower()
+
+            if _key not in item:
+                raise SyntaxError(f"key {_key} not in {item}")
+                # return False
+
+            if _val is not True and item[_key].lower().find(_val) == -1:
+                return False
 
     return True
 

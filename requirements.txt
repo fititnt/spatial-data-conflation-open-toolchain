@@ -4,3 +4,6 @@ haversine
 
 # Used only by csv2excel
 pandas
+
+# Used by util
+levenshtein

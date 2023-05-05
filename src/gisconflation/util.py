@@ -1,6 +1,10 @@
 import re
 import string
 
+# https://pypi.org/project/Levenshtein/
+# pip install levenshtein
+import Levenshtein
+
 
 class AttributesEditor:
     """Edit attributes of a dictionary"""
@@ -58,6 +62,28 @@ class AttributesEditor:
         return result
 
 
+class LevenshteinHelper:
+    """LevenshteinHelper is ...
+    @see https://maxbachmann.github.io/Levenshtein/levenshtein.html
+    """
+
+    def __init__(self) -> None:
+        pass
+
+    def test(self) -> str:
+        """_summary_
+
+        Returns:
+            str: _description_
+
+        >>> lh = LevenshteinHelper()
+        >>> lh.test()
+        'test'
+        """
+        # return Levenshtein.distance("teste", "testeee")
+        return "test"
+
+
 # def parse_argument_values(arguments: list, delimiter: str = "||") -> dict:
 def parse_argument_values(
     arguments: list, delimiter: str = "|||", delimiter2: str = "||"
@@ -86,7 +112,7 @@ def _zzz_format_name_place_br(value: str):
         return value
 
     term = string.capwords(value.strip())
-    term2 = re.sub("\s\s+", " ", term)
+    term2 = re.sub("\\s\\s+", " ", term)
 
     # @TODO deal with Do Da De
 
@@ -95,6 +121,7 @@ def _zzz_format_name_place_br(value: str):
     term2 = term2.replace(" Do ", " do ")
 
     return term2
+
 
 def _zzz_format_phone_br(value: str):
     if not value:
