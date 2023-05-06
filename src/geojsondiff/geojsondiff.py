@@ -847,7 +847,9 @@ class GeojsonCompare:
                                 if altkey in self.b.items[index_b][1]:
                                     _aliasgroup.append(self.b.items[index_b][1][altkey])
                                 else:
-                                    _aliasgroup.append(None)
+                                    # _aliasgroup.append(None)
+                                    # _aliasgroup.append('')
+                                    pass
                             # print(_aliasgroup)
                             candidates_aliases.append(_aliasgroup)
                             found = True
@@ -861,7 +863,8 @@ class GeojsonCompare:
                         if refkey in self.a.items[index_a][1]:
                             item_aliases.append(self.a.items[index_a][1][refkey])
                         else:
-                            item_aliases.append(None)
+                            # item_aliases.append(None)
+                            item_aliases.append('')
                 # print(item_aliases)
 
                 it = ItemMatcher(
