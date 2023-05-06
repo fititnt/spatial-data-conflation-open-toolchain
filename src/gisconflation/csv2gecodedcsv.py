@@ -17,8 +17,8 @@
 # COLLABORATORS:  ---
 #
 #       COMPANY:  EticaAI
-#       LICENSE:  Public Domain dedication or Zero-Clause BSD
-#                 SPDX-License-Identifier: Unlicense OR 0BSD
+#       LICENSE:  GNU Affero General Public License v3.0 or later
+#                 SPDX-License-Identifier: AGPL-3.0-or-later
 #       VERSION:  v0.5.0
 #       CREATED:  2023-05-06 16:54 BRT started, based on csv2geojson.py
 #      REVISION:  --

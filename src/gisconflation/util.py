@@ -5,7 +5,8 @@ import string
 # pip install levenshtein
 import Levenshtein
 
-# import unicodedata
+# Record separator
+DICTIONARY_SEPARATOR = "␞"
 
 
 class AttributesEditor:
