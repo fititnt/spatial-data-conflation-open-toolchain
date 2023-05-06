@@ -181,6 +181,17 @@ class Cli:
         )
 
         parser.add_argument(
+            "--input-fieldnames",
+            help="If the input CSV does not have a header, specify here. "
+            "Use | as separator (if a field de de facto have |, then use \|). "
+            "Example: --input-fieldnames='field with \| on it|another field'",
+            dest="in_fieldnames",
+            # default="utf-8",
+            required=False,
+            nargs="?",
+        )
+
+        parser.add_argument(
             "--output-delimiter",
             help="The output delimiter",
             dest="out_delimiter",
@@ -320,27 +331,37 @@ class Cli:
     def execute_cli(self, pyargs, stdin=STDIN, stdout=sys.stdout, stderr=sys.stderr):
         # input_file = STDIN if pyargs.input == "-" else pyargs.input
 
-        print("TODO")
+        # print("TODO")
 
         # @TODO stdin does not yet allow non UTF8 customization (will pass as it is)
         # @see https://stackoverflow.com/questions/5004687
         with open(pyargs.input, "r", encoding=pyargs.in_encoding) if len(
             pyargs.input
         ) > 1 else sys.stdin as csvfile:
-            reader = csv.DictReader(csvfile, delimiter=pyargs.in_delimiter)
+            if pyargs.in_fieldnames:
+                _in_fieldnames = re.split(r"(?<!\\)\|", pyargs.in_fieldnames)
+                # _in_fieldnames = re.split(r"", pyargs.in_fieldnames)
+                # print(_in_fieldnames)
+
+                reader = csv.DictReader(
+                    csvfile, fieldnames=_in_fieldnames, delimiter=pyargs.in_delimiter
+                )
+            else:
+                reader = csv.DictReader(csvfile, delimiter=pyargs.in_delimiter)
+
+            # reader = csv.DictReader(csvfile, delimiter=pyargs.in_delimiter)
 
             firstline = next(reader)
 
             _fieldnames = firstline.keys()
-            writer = csv.DictWriter(sys.stdout, fieldnames=_fieldnames)
+            writer = csv.DictWriter(
+                sys.stdout, fieldnames=_fieldnames, delimiter=pyargs.out_delimiter
+            )
 
             writer.writeheader()
             writer.writerow(firstline)
 
             for row in reader:
-                # line_num += 1
-                # print('')
-                # print(row)
                 writer.writerow(row)
 
         return self.EXIT_OK
