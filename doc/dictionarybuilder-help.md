@@ -4,6 +4,8 @@ usage: dictionarybuilder [-h] [--input-delimiter [IN_DELIMITER]]
                          [--input-fieldnames [IN_FIELDNAMES]]
                          [--dict-target-key [DICT_TARGET]]
                          [--dict-source-key [DICT_SOURCES]]
+                         [--transform-uppercase] [--transform-lowercase]
+                         [--transform-no-latin-accents] [--ignore-warnings]
                          input
 
 ------------------------------------------------------------------------------
@@ -36,6 +38,14 @@ options:
                         target key. If undefined, defaults to all fields which
                         are not the --dict-target-key. Example: --dict-source-
                         key='name' --dict-source-key='title'
+  --transform-uppercase
+                        Force all source values to UPPERCASE
+  --transform-lowercase
+                        Force all source values to lowercase
+  --transform-no-latin-accents
+                        Remove some diacrilics of latin script
+  --ignore-warnings     Ignore some errors (duplicated key / ambiguous
+                        results)
 
 ------------------------------------------------------------------------------
                             EXEMPLŌRUM GRATIĀ

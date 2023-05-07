@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # ==============================================================================
 #
-#          FILE:  dictionarybuilder.py
+#          FILE:  dictionarymerger.py
 #
-#         USAGE:  ./scripts/dictionarybuilder.py
-#                 ./scripts/dictionarybuilder.py --help
+#         USAGE:  ./scripts/dictionarymerger.py
+#                 ./scripts/dictionarymerger.py --help
 #
 #   DESCRIPTION:  ---
 #
@@ -20,7 +20,7 @@
 #       LICENSE:  GNU Affero General Public License v3.0 or later
 #                 SPDX-License-Identifier: AGPL-3.0-or-later
 #       VERSION:  v1.0.0
-#       CREATED:  2023-05-06 19:32 BRT
+#       CREATED:  2023-05-06 22:24 BRT started, based on dictionarybuilder.py
 #      REVISION:  --
 # ==============================================================================
 
@@ -31,12 +31,20 @@ import sys
 
 
 __VERSION__ = "1.0.0"
-PROGRAM = "dictionarybuilder"
+PROGRAM = "dictionarymerger"
 DESCRIPTION = """
 ------------------------------------------------------------------------------
-Convert 2 or more columns of one CSV input file into a dictionary (a sorted
-2 column RS delimited file) optimized to be used by other tools as simple
-pivot file to replace or append new values to existing datasets
+For 2 or more output dictionaries from dictionarybuilder, merge them.
+
+Simple strategy is *append* (e.g. similar to unix cat command, but sort again
+the values and check inconsistencies).
+
+The additional strategy is *transpose* value from dictionary A directly on
+result of dictoryary B. Example:
+
+    Input 1: X -> Y
+    Input 2: Y -> Z
+    Output:  X -> Z
 
 ------------------------------------------------------------------------------
 """.format(
@@ -84,79 +92,83 @@ class Cli:
             epilog=__EPILOGUM__,
         )
 
+
+        # @see https://stackoverflow.com/questions/5373474/multiple-positional-arguments-with-python-and-argparse
+        # @TODO deal with both simple contatenation and transposition
+        #       do not need to implement on this tool advanced input normalization
         parser.add_argument("input", help="path to CSV file on disk. Use - for stdin")
 
-        parser.add_argument(
-            "--input-delimiter",
-            help="The input delimiter",
-            dest="in_delimiter",
-            default=",",
-            required=False,
-            nargs="?",
-        )
+        # parser.add_argument(
+        #     "--input-delimiter",
+        #     help="The input delimiter",
+        #     dest="in_delimiter",
+        #     default=",",
+        #     required=False,
+        #     nargs="?",
+        # )
 
-        parser.add_argument(
-            "--input-encoding",
-            help="The input encoding",
-            dest="in_encoding",
-            default="utf-8",
-            required=False,
-            nargs="?",
-        )
+        # parser.add_argument(
+        #     "--input-encoding",
+        #     help="The input encoding",
+        #     dest="in_encoding",
+        #     default="utf-8",
+        #     required=False,
+        #     nargs="?",
+        # )
 
-        parser.add_argument(
-            "--input-fieldnames",
-            help="If the input CSV does not have a header, specify here. "
-            "Use | as separator (if a field de de facto have |, then use \|). "
-            "Example: --input-fieldnames='field with \| on it|another field'",
-            dest="in_fieldnames",
-            # default="utf-8",
-            required=False,
-            nargs="?",
-        )
+        # parser.add_argument(
+        #     "--input-fieldnames",
+        #     help="If the input CSV does not have a header, specify here. "
+        #     "Use | as separator (if a field de de facto have |, then use \|). "
+        #     "Example: --input-fieldnames='field with \| on it|another field'",
+        #     dest="in_fieldnames",
+        #     # default="utf-8",
+        #     required=False,
+        #     nargs="?",
+        # )
 
-        parser.add_argument(
-            "--dict-target-key",
-            help="Field name to represent the primary key to convert data "
-            "Defaults to first column. Example: "
-            "--dict-target-key='id'",
-            dest="dict_target",
-            required=False,
-            nargs="?",
-        )
+        # parser.add_argument(
+        #     "--dict-target-key",
+        #     help="Field name to represent the primary key to convert data "
+        #     "Defaults to first column. Example: "
+        #     "--dict-target-key='id'",
+        #     dest="dict_target",
+        #     required=False,
+        #     nargs="?",
+        # )
 
-        parser.add_argument(
-            "--dict-source-key",
-            help="Field name to be used as source to convert data to target key. "
-            "If undefined, defaults to all fields which are not the "
-            "--dict-target-key. Example: "
-            "--dict-source-key='name' --dict-source-key='title' ",
-            dest="dict_sources",
-            action="append",
-            required=False,
-            nargs="?",
-        )
+        # parser.add_argument(
+        #     "--dict-source-key",
+        #     help="Field name to be used as source to convert data to target key. "
+        #     "If undefined, defaults to all fields which are not the "
+        #     "--dict-target-key. Example: "
+        #     "--dict-source-key='name' --dict-source-key='title' ",
+        #     dest="dict_sources",
+        #     action="append",
+        #     required=False,
+        #     nargs="?",
+        # )
 
-        parser.add_argument(
-            "--transform-uppercase",
-            help="Force all source values to UPPERCASE",
-            dest="t_uppercase",
-            action="store_true",
-        )
+        # parser.add_argument(
+        #     "--transform-uppercase",
+        #     help="Force all source values to UPPERCASE",
+        #     dest="t_uppercase",
+        #     action="store_true",
+        # )
 
-        parser.add_argument(
-            "--transform-lowercase",
-            help="Force all source values to lowercase",
-            dest="t_lowercase",
-            action="store_true",
-        )
+        # parser.add_argument(
+        #     "--transform-lowercase",
+        #     help="Force all source values to lowercase",
+        #     dest="t_lowercase",
+        #     action="store_true",
+        # )
 
-        parser.add_argument(
-            "--transform-no-latin-accents",
-            help="Remove some diacrilics of latin script",
-            dest="t_nolatinaccents",
-            action="store_true",
-        )
+        # parser.add_argument(
+        #     "--transform-no-latin-accents",
+        #     help="Remove some diacrilics of latin script",
+        #     dest="t_nolatinaccents",
+        #     action="store_true",
+        # )
 
         parser.add_argument(
             "--ignore-warnings",
