@@ -864,7 +864,7 @@ class GeojsonCompare:
                             item_aliases.append(self.a.items[index_a][1][refkey])
                         else:
                             # item_aliases.append(None)
-                            item_aliases.append('')
+                            item_aliases.append("")
                 # print(item_aliases)
 
                 it = ItemMatcher(
@@ -915,6 +915,9 @@ class GeojsonCompare:
 
     def diff_geojson_full(self):
         dataobj = {"type": "FeatureCollection", "features": []}
+
+        _repeatcheck = {}
+
         for index_a in range(0, len(self.a.items)):
             _item_a = self.a.items[index_a]
 
@@ -1000,6 +1003,22 @@ class GeojsonCompare:
             #     # 'move':   '#110055',  # moving an existing node
             #     final_properties["action"] = "move"
             #     final_properties["marker-color"] = "#110055"
+
+            _hash = str(hash(str(final_geometry)))
+            if _hash not in _repeatcheck:
+                _repeatcheck[_hash] = 0
+            else:
+                _repeatcheck[_hash] += 1
+                if final_geometry["type"] == "Point":
+                    final_properties["__coordinates_original"] = final_geometry[
+                        "coordinates"
+                    ]
+                    final_geometry["coordinates"][0] = final_geometry["coordinates"][
+                        0
+                    ] + (_repeatcheck[_hash] * 0.0001)
+                    final_geometry["coordinates"][1] = final_geometry["coordinates"][
+                        1
+                    ] - (_repeatcheck[_hash] * 0.0001)
 
             res = {
                 "geometry": final_geometry,
@@ -1234,7 +1253,9 @@ class ItemMatcher:
         for idx, item in enumerate(candidates):
             _ext.append((item[0], item[1], item_aliases, candidates_aliases[idx]))
         # candidates_sorted = sorted(candidates, key=lambda tup: tup[0])
-        candidates_sorted = sorted(_ext, key=lambda tup: Levenshtein.setratio(tup[2], tup[3]), reverse=True)
+        candidates_sorted = sorted(
+            _ext, key=lambda tup: Levenshtein.setratio(tup[2], tup[3]), reverse=True
+        )
 
         # Improve this part
         self.candidates_valid = candidates_sorted
