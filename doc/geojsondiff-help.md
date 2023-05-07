@@ -1,16 +1,18 @@
-usage: geojson-diff [-h] [--output-diff-geojson [OUTDIFFGEO]]
-                    [--output-diff-csv [OUTDIFFCSV]]
-                    [--output-diff-tsv [OUTDIFFTSV]] [--output-log [OUTLOG]]
-                    [--tolerate-distance [TDIST]]
-                    [--pivot-key-main [PIVOT_KEY_MAIN]]
-                    [--pivot-attr-2 [PIVOT_ATTR_2]]
-                    [--prefilter-a-contain [PREFILTER_A_CONTAIN]]
-                    [--prefilter-b-contain [PREFILTER_B_CONTAIN]]
-                    [--filter-ab-dist-min [FILTER_AB_DIST_MIN]]
-                    [--filter-ab-dist-max] [--filter-matched-pivot-key]
-                    [--filter-matched-pivot-key-not]
-                    [--output-josm-file [OUTOSC]]
-                    geodataset_a geodataset_b
+```
+usage: geojsondiff [-h] [--output-diff-geojson [OUTDIFFGEO]]
+                   [--output-diff-csv [OUTDIFFCSV]]
+                   [--output-diff-tsv [OUTDIFFTSV]] [--output-log [OUTLOG]]
+                   [--tolerate-distance [TDIST]]
+                   [--pivot-key-main [PIVOT_KEY_MAIN]]
+                   [--pivot-attr-2 [PIVOT_ATTR_2]]
+                   [--pivot-alias [PIVOT_ALIAS]]
+                   [--prefilter-a-contain [PREFILTER_A_CONTAIN]]
+                   [--prefilter-b-contain [PREFILTER_B_CONTAIN]]
+                   [--filter-ab-dist-min [FILTER_AB_DIST_MIN]]
+                   [--filter-ab-dist-max] [--filter-matched-pivot-key]
+                   [--filter-matched-pivot-key-not]
+                   [--output-josm-file [OUTOSC]]
+                   geodataset_a geodataset_b
 
 ------------------------------------------------------------------------------
 GeoJSON++ diff
@@ -48,6 +50,13 @@ Parameters used to know how to conflate A and B:
                         about being about same. Use '||' if attribute on A is
                         not the same on the B. Accept multiple values.
                         Example: --pivot-attr-2='contact:email'
+  --pivot-alias [PIVOT_ALIAS]
+                        A weak (like name or description) attribute to order
+                        the matches. Impefect. Never will return perfect
+                        match, even if exact the same. Use '||' if attribute
+                        on A is not the same on the B. Accept multiple values.
+                        Example: --pivot-alias'COMPANY_NAME||name' --pivot-
+                        alias'COMPANY_NAME||alt_name'
 
 Pre-filter data before processing:
   --prefilter-a-contain [PREFILTER_A_CONTAIN]
@@ -78,7 +87,7 @@ ADVANCED. Do not upload to OpenStreetMap unless you review the output. Requires 
 ------------------------------------------------------------------------------
                             EXEMPLŌRUM GRATIĀ
 ------------------------------------------------------------------------------
-    geojson-diff --output-diff-geojson=data/tmp/diff-points-ab.geojson --output-diff-tsv=data/tmp/diff-points-ab.tsv --output-diff-csv=data/tmp/diff-points-ab.csv --output-log=data/tmp/diff-points-ab.log.txt --tolerate-distance=1000 tests/data/data-points_a.geojson tests/data/data-points_b.geojson
+    geojsondiff --output-diff-geojson=data/tmp/diff-points-ab.geojson --output-diff-tsv=data/tmp/diff-points-ab.tsv --output-diff-csv=data/tmp/diff-points-ab.csv --output-log=data/tmp/diff-points-ab.log.txt --tolerate-distance=1000 tests/data/data-points_a.geojson tests/data/data-points_b.geojson
 
 GeoJSON (center point) example with overpass . . . . . . . . . . . . . . . . .
     [out:json][timeout:25];
@@ -92,3 +101,5 @@ GeoJSON (center point) example with overpass . . . . . . . . . . . . . . . . .
 ------------------------------------------------------------------------------
                             EXEMPLŌRUM GRATIĀ
 ------------------------------------------------------------------------------
+
+```

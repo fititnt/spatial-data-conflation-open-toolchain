@@ -1,3 +1,4 @@
+```
 usage: overpassql2osmf [-h] input_query
 
 ------------------------------------------------------------------------------
@@ -14,7 +15,14 @@ options:
 ------------------------------------------------------------------------------
                             EXEMPLŌRUM GRATIĀ
 ------------------------------------------------------------------------------
-    overpassql2osmf input.csv output.xlsx
+Input file contains Overpass query . . . . . . . . . . . . . . . . . . . . . .
+    overpassql2osmf tests/data/cnes.overpassql > tests/temp/cnes.osm
+
+CSV Output (requires special Overpass query) . . . . . . . . . . . . . . . . .
+
+    overpassql2osmf '[out:csv(::id,::type,"name")]; area[name="Bonn"]; nwr(area)[railway=station]; out;' > tests/temp/bonn.osm.csv
 ------------------------------------------------------------------------------
                             EXEMPLŌRUM GRATIĀ
 ------------------------------------------------------------------------------
+
+```

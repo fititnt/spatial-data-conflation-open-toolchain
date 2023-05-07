@@ -60,7 +60,13 @@ __EPILOGUM__ = """
 ------------------------------------------------------------------------------
                             EXEMPLŌRUM GRATIĀ
 ------------------------------------------------------------------------------
-    {0} input.csv output.xlsx
+Input file contains Overpass query . . . . . . . . . . . . . . . . . . . . . .
+    {0} tests/data/cnes.overpassql > tests/temp/cnes.osm
+
+CSV Output (requires special Overpass query) . . . . . . . . . . . . . . . . .
+
+    {0} '[out:csv(::id,::type,"name")]; area[name="Bonn"]; nwr(area)[railway=station]; out;' \
+> tests/temp/bonn.osm.csv
 ------------------------------------------------------------------------------
                             EXEMPLŌRUM GRATIĀ
 ------------------------------------------------------------------------------

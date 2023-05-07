@@ -48,7 +48,7 @@ from gisconflation.util import LevenshteinHelper
 
 __VERSION__ = "0.6.1"
 
-PROGRAM = "geojson-diff"
+PROGRAM = "geojsondiff"
 DESCRIPTION = """
 ------------------------------------------------------------------------------
 GeoJSON++ diff

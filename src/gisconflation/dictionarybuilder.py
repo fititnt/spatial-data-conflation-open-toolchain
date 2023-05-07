@@ -141,19 +141,37 @@ class Cli:
             nargs="?",
         )
 
-        # parser.add_argument(
-        #     "--output-delimiter",
-        #     help="The output delimiter",
-        #     dest="out_delimiter",
-        #     default=",",
-        #     required=False,
-        #     nargs="?",
-        # )
+        parser.add_argument(
+            "--transform-uppercase",
+            help="Force all source values to UPPERCASE",
+            dest="t_uppercase",
+            action="store_true",
+        )
+
+        parser.add_argument(
+            "--transform-lowercase",
+            help="Force all source values to lowercase",
+            dest="t_lowercase",
+            action="store_true",
+        )
+
+        parser.add_argument(
+            "--transform-no-latin-accents",
+            help="Remove some diacrilics of latin script",
+            dest="t_nolatinaccents",
+            action="store_true",
+        )
+
+        parser.add_argument(
+            "--ignore-warnings",
+            help="Ignore some errors (duplicated key / ambiguous results)",
+            dest="ignore_warnings",
+            action="store_true",
+        )
 
         return parser.parse_args()
 
     def execute_cli(self, pyargs, stdin=STDIN, stdout=sys.stdout, stderr=sys.stderr):
-
         # @TODO implement strict run (fail if repeated source falues)
         # @TODO implement UPPER, lower and remove-accents options
 
@@ -198,12 +216,33 @@ class Cli:
             )
 
             outdict = {}
+            # @TODO This part is a bit duplicated. Could be better.
+            # #     Remove duplicated code
             for item in dict_sources:
                 if not firstline[item] or len(firstline[item]) == 0:
                     continue
 
-                _k = firstline[item].strip()
-                _v = firstline[dict_target].strip()
+                _v = firstline[item].strip()
+                _k = firstline[dict_target].strip()
+
+                if pyargs.t_nolatinaccents:
+                    _k = _k.lower()
+                    # Obviously incomplete
+                    _k = re.sub(r"[àáâãäå]", "a", _k)
+                    _k = re.sub(r"[èéêë]", "e", _k)
+                    _k = re.sub(r"[ìíîï]", "i", _k)
+                    _k = re.sub(r"[òóôõö]", "o", _k)
+                    _k = re.sub(r"[ñ]", "n", _k)
+                    _k = re.sub(r"[ç]", "c", _k)
+
+                if pyargs.t_lowercase:
+                    _k = _k.lower()
+                elif pyargs.t_uppercase:
+                    _k = _k.upper()
+
+                if _k in outdict and outdict[_k] != _v and not pyargs.ignore_warnings:
+                    print(f"{_k} repeated", sys.stderr)
+
                 outdict[_k] = _v
 
             for row in reader:
@@ -211,13 +250,35 @@ class Cli:
                     if not row[item] or len(row[item]) == 0:
                         continue
 
-                    _k = row[item].strip()
-                    _v = row[dict_target].strip()
+                    _v = row[item].strip()
+                    _k = row[dict_target].strip()
+
+                    if pyargs.t_nolatinaccents:
+                        _k = _k.lower()
+                        # Obviously incomplete
+                        _k = re.sub(r"[àáâãäå]", "a", _k)
+                        _k = re.sub(r"[èéêë]", "e", _k)
+                        _k = re.sub(r"[ìíîï]", "i", _k)
+                        _k = re.sub(r"[òóôõö]", "o", _k)
+                        _k = re.sub(r"[ñ]", "n", _k)
+                        _k = re.sub(r"[ç]", "c", _k)
+
+                    if pyargs.t_lowercase:
+                        _k = _k.lower()
+                    elif pyargs.t_uppercase:
+                        _k = _k.upper()
+
+                    if (
+                        _k in outdict
+                        and outdict[_k] != _v
+                        and not pyargs.ignore_warnings
+                    ):
+                        print(f"{_k} repeated", sys.stderr)
+
                     outdict[_k] = _v
 
                     # outdict[firstline[item].strip()] = firstline[dict_target].strip()
                 # writer.writerow(row)
-
 
             outdict_sorted = dict(sorted(outdict.items()))
 

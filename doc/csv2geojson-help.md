@@ -1,5 +1,7 @@
-usage: csv2geojson [-h] --lat [LAT] --lon [LON] [--contain-or [CONTAIN_OR]]
-                   [--contain-and [CONTAIN_AND]]
+```
+usage: csv2geojson [-h] --lat [LAT] --lon [LON]
+                   [--filter-contain [FILTER_CONTAIN]]
+                   [--contain-or [CONTAIN_OR]] [--contain-and [CONTAIN_AND]]
                    [--contain-and-in [CONTAIN_AND_IN]]
                    [--delimiter [DELIMITER]] [--encoding [ENCODING]]
                    [--output-type [{GeoJSON,GeoJSONSeq}]] [--ignore-warnings]
@@ -25,6 +27,11 @@ options:
   -h, --help            show this help message and exit
   --lat [LAT]           the name of the latitude column
   --lon [LON]           the name of the longitude column
+  --filter-contain [FILTER_CONTAIN]
+                        Filter one or more fields for contain a stringUse
+                        '|||' to divide the field and the string. Accept
+                        multiple values. Example: --filter-
+                        contain='name|||hospital'
   --contain-or [CONTAIN_OR]
                         If defined, only results that match at least one
                         clause will appear on output. Accept multiple values.
@@ -114,3 +121,5 @@ CNPJ_BASICO;CNPJ_ORDEM;CNPJ_DV;IDENTIFICADOR;MATRIZ_FILIAL;SITUAÇÃO_CADASTRAL;
 ------------------------------------------------------------------------------
                             EXEMPLŌRUM GRATIĀ
 ------------------------------------------------------------------------------
+
+```

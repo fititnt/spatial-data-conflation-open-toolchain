@@ -22,14 +22,37 @@ pip install --upgrade gis-conflation-toolchain
 
 ## Toolchain
 
+<!--
+Rebuld documentation with
+    ./generate-help-markdown.sh
+-->
+
 ### csv2excel
 - [doc/csv2excel-help.md](doc/csv2excel-help.md)
+
+### csvedit
+- [doc/csvedit-help.md](doc/csvedit-help.md)
+
+### dictionarybuilder
+- [doc/dictionarybuilder-help.md](doc/dictionarybuilder-help.md)
+
+### geojsondiff
+- [doc/geojsondiff-help.md](doc/geojsondiff-help.md)
+
+### geojsonedit
+- [doc/geojsonedit-help.md](doc/geojsonedit-help.md)
+
+### geojsonmerger
+- [doc/geojsonmerger-help.md](doc/geojsonmerger-help.md)
 
 ### csv2geojson
 - [doc/csv2geojson-help.md](doc/csv2geojson-help.md)
 
-### geojsondiff
-- [doc/geojsondiff-help.md](doc/geojsondiff-help.md)
+### json2csv
+- [doc/json2csv-help.md](doc/json2csv-help.md)
+
+### overpassql2osmf
+- [doc/overpassql2osmf-help.md](doc/overpassql2osmf-help.md)
 
 <!--
 
@@ -42,7 +65,3 @@ osmium sort -o tests/data/test1-v2.osm tests/data/test1.osm
 osmf2geojson tests/data/test2-v2.osm > tests/temp/test2-v2.geojson
 osmf2geojson tests/data/test1-v2.osm > tests/temp/test1-v2.geojson
 -->
-
-## License
-
-Public domain
