@@ -159,6 +159,13 @@ class Cli:
         )
 
         parser.add_argument(
+            "--logfile",
+            help="Path to a file to log warnings and other information",
+            dest="logfile",
+            nargs="?",
+        )
+
+        parser.add_argument(
             "--ignore-warnings",
             help="Ignore some errors (duplicated key / ambiguous results)",
             dest="ignore_warnings",
@@ -170,6 +177,11 @@ class Cli:
     def execute_cli(self, pyargs, stdin=STDIN, stdout=sys.stdout, stderr=sys.stderr):
         # @TODO implement strict run (fail if repeated source falues)
         # @TODO implement UPPER, lower and remove-accents options
+
+        f_warnings = sys.stderr
+        if pyargs.logfile:
+            f_logfile = open(pyargs.logfile, "w", encoding="utf-8")
+            f_warnings = f_logfile
 
         # @TODO stdin does not yet allow non UTF8 customization (will pass as it is)
         # @see https://stackoverflow.com/questions/5004687
@@ -222,22 +234,23 @@ class Cli:
                 _k = firstline[dict_target].strip()
 
                 if pyargs.t_nolatinaccents:
-                    _k = _k.lower()
+                    _v = _v.lower()
                     # Obviously incomplete
-                    _k = re.sub(r"[àáâãäå]", "a", _k)
-                    _k = re.sub(r"[èéêë]", "e", _k)
-                    _k = re.sub(r"[ìíîï]", "i", _k)
-                    _k = re.sub(r"[òóôõö]", "o", _k)
-                    _k = re.sub(r"[ñ]", "n", _k)
-                    _k = re.sub(r"[ç]", "c", _k)
+                    _v = re.sub(r"[àáâãäå]", "a", _v)
+                    _v = re.sub(r"[èéêë]", "e", _v)
+                    _v = re.sub(r"[ìíîï]", "i", _v)
+                    _v = re.sub(r"[òóôõö]", "o", _v)
+                    _v = re.sub(r"[ñ]", "n", _v)
+                    _v = re.sub(r"[ç]", "c", _v)
 
                 if pyargs.t_lowercase:
-                    _k = _k.lower()
+                    _v = _v.lower()
                 elif pyargs.t_uppercase:
-                    _k = _k.upper()
+                    _v = _v.upper()
 
                 if _k in outdict and outdict[_k] != _v and not pyargs.ignore_warnings:
-                    print(f"{_k} repeated", sys.stderr)
+                    print(f"{_k} repeated", file=f_warnings)
+                    continue
 
                 outdict[_k] = _v
 
@@ -250,26 +263,27 @@ class Cli:
                     _k = row[dict_target].strip()
 
                     if pyargs.t_nolatinaccents:
-                        _k = _k.lower()
+                        _v = _v.lower()
                         # Obviously incomplete
-                        _k = re.sub(r"[àáâãäå]", "a", _k)
-                        _k = re.sub(r"[èéêë]", "e", _k)
-                        _k = re.sub(r"[ìíîï]", "i", _k)
-                        _k = re.sub(r"[òóôõö]", "o", _k)
-                        _k = re.sub(r"[ñ]", "n", _k)
-                        _k = re.sub(r"[ç]", "c", _k)
+                        _v = re.sub(r"[àáâãäå]", "a", _v)
+                        _v = re.sub(r"[èéêë]", "e", _v)
+                        _v = re.sub(r"[ìíîï]", "i", _v)
+                        _v = re.sub(r"[òóôõö]", "o", _v)
+                        _v = re.sub(r"[ñ]", "n", _v)
+                        _v = re.sub(r"[ç]", "c", _v)
 
                     if pyargs.t_lowercase:
-                        _k = _k.lower()
+                        _v = _v.lower()
                     elif pyargs.t_uppercase:
-                        _k = _k.upper()
+                        _v = _v.upper()
 
                     if (
                         _k in outdict
                         and outdict[_k] != _v
                         and not pyargs.ignore_warnings
                     ):
-                        print(f"{_k} repeated", sys.stderr)
+                        print(f"{_k} repeated", file=f_warnings)
+                        continue
 
                     outdict[_k] = _v
 
@@ -289,6 +303,9 @@ class Cli:
 
             # for row in reader:
             #     writer.writerow(row)
+
+        if pyargs.logfile:
+            f_logfile.close()
 
         return self.EXIT_OK
 

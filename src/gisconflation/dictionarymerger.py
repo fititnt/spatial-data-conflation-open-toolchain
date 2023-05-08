@@ -26,10 +26,9 @@
 
 import argparse
 import csv
-import re
+# import re
 import sys
 
-#
 
 __VERSION__ = "1.0.0"
 PROGRAM = "dictionarymerger"
@@ -39,6 +38,8 @@ For 2 or more output dictionaries from dictionarybuilder, merge them.
 
 Simple strategy is *append* (e.g. similar to unix cat command, but sort again
 the values and check inconsistencies).
+
+[Next part NOT implemented yet]
 
 The additional strategy is *transpose* value from dictionary A directly on
 result of dictoryary B. Example:
@@ -115,6 +116,13 @@ class Cli:
             action="store_true",
         )
 
+        parser.add_argument(
+            "--logfile",
+            help="Path to a file to log warnings and other information",
+            dest="logfile",
+            nargs="?",
+        )
+
         return parser.parse_args()
 
     def execute_cli(self, pyargs, stdin=STDIN, stdout=sys.stdout, stderr=sys.stderr):
@@ -122,11 +130,16 @@ class Cli:
 
         outdict = {}
 
+        f_warnings = sys.stderr
+        if pyargs.logfile:
+            f_logfile = open(pyargs.logfile, "w", encoding="utf-8")
+            f_warnings = f_logfile
+
         with open(pyargs.input, "r") if len(pyargs.input) > 1 else sys.stdin as csvfile:
             reader = csv.reader(csvfile, delimiter=DICTIONARY_SEPARATOR)
 
             for row in reader:
-                print(row)
+                # print(row)
                 outdict[row[0]] = row[1]
 
             outdict_sorted = dict(sorted(outdict.items()))
@@ -134,10 +147,36 @@ class Cli:
             writer = csv.writer(
                 sys.stdout, delimiter=DICTIONARY_SEPARATOR, quoting=csv.QUOTE_MINIMAL
             )
-            for key, value in outdict_sorted.items():
-                writer.writerow([key, value])
+
+        if pyargs.in_append_files:
+            for dfile in pyargs.in_append_files:
+                # @TODO deal with duplicates
+                with open(dfile, "r") as csvfile:
+                    reader = csv.reader(csvfile, delimiter=DICTIONARY_SEPARATOR)
+                    for row in reader:
+                        # print(dfile)
+                        # print(row)
+                        _k = row[0]
+                        _v = row[1]
+                        if (
+                            _k in outdict
+                            and outdict[_k] != _v
+                            and not pyargs.ignore_warnings
+                        ):
+                            print(f"{_k} repeated", file=f_warnings)
+                        outdict[_k] = _v
+
+        for key, value in outdict_sorted.items():
+            writer.writerow([key, value])
+
+        if pyargs.logfile:
+            f_logfile.close()
 
         return self.EXIT_OK
+
+
+def _file_to_dict(file: str) -> dict:
+    pass
 
 
 def exec_from_console_scripts():
