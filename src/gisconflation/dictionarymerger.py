@@ -29,6 +29,7 @@ import csv
 import re
 import sys
 
+#
 
 __VERSION__ = "1.0.0"
 PROGRAM = "dictionarymerger"
@@ -92,83 +93,20 @@ class Cli:
             epilog=__EPILOGUM__,
         )
 
-
         # @see https://stackoverflow.com/questions/5373474/multiple-positional-arguments-with-python-and-argparse
         # @TODO deal with both simple contatenation and transposition
         #       do not need to implement on this tool advanced input normalization
         parser.add_argument("input", help="path to CSV file on disk. Use - for stdin")
 
-        # parser.add_argument(
-        #     "--input-delimiter",
-        #     help="The input delimiter",
-        #     dest="in_delimiter",
-        #     default=",",
-        #     required=False,
-        #     nargs="?",
-        # )
-
-        # parser.add_argument(
-        #     "--input-encoding",
-        #     help="The input encoding",
-        #     dest="in_encoding",
-        #     default="utf-8",
-        #     required=False,
-        #     nargs="?",
-        # )
-
-        # parser.add_argument(
-        #     "--input-fieldnames",
-        #     help="If the input CSV does not have a header, specify here. "
-        #     "Use | as separator (if a field de de facto have |, then use \|). "
-        #     "Example: --input-fieldnames='field with \| on it|another field'",
-        #     dest="in_fieldnames",
-        #     # default="utf-8",
-        #     required=False,
-        #     nargs="?",
-        # )
-
-        # parser.add_argument(
-        #     "--dict-target-key",
-        #     help="Field name to represent the primary key to convert data "
-        #     "Defaults to first column. Example: "
-        #     "--dict-target-key='id'",
-        #     dest="dict_target",
-        #     required=False,
-        #     nargs="?",
-        # )
-
-        # parser.add_argument(
-        #     "--dict-source-key",
-        #     help="Field name to be used as source to convert data to target key. "
-        #     "If undefined, defaults to all fields which are not the "
-        #     "--dict-target-key. Example: "
-        #     "--dict-source-key='name' --dict-source-key='title' ",
-        #     dest="dict_sources",
-        #     action="append",
-        #     required=False,
-        #     nargs="?",
-        # )
-
-        # parser.add_argument(
-        #     "--transform-uppercase",
-        #     help="Force all source values to UPPERCASE",
-        #     dest="t_uppercase",
-        #     action="store_true",
-        # )
-
-        # parser.add_argument(
-        #     "--transform-lowercase",
-        #     help="Force all source values to lowercase",
-        #     dest="t_lowercase",
-        #     action="store_true",
-        # )
-
-        # parser.add_argument(
-        #     "--transform-no-latin-accents",
-        #     help="Remove some diacrilics of latin script",
-        #     dest="t_nolatinaccents",
-        #     action="store_true",
-        # )
+        parser.add_argument(
+            "--input-append-file",
+            help="The input delimiter",
+            dest="in_append_files",
+            default=None,
+            action="append",
+            required=False,
+            nargs="?",
+        )
 
         parser.add_argument(
             "--ignore-warnings",
@@ -180,127 +118,24 @@ class Cli:
         return parser.parse_args()
 
     def execute_cli(self, pyargs, stdin=STDIN, stdout=sys.stdout, stderr=sys.stderr):
-        # @TODO implement strict run (fail if repeated source falues)
-        # @TODO implement UPPER, lower and remove-accents options
+        # with open(pyargs.input, "r", encoding=pyargs.in_encoding) if len(
 
-        # @TODO stdin does not yet allow non UTF8 customization (will pass as it is)
-        # @see https://stackoverflow.com/questions/5004687
-        with open(pyargs.input, "r", encoding=pyargs.in_encoding) if len(
-            pyargs.input
-        ) > 1 else sys.stdin as csvfile:
-            if pyargs.in_fieldnames:
-                _in_fieldnames = re.split(r"(?<!\\)\|", pyargs.in_fieldnames)
-                # _in_fieldnames = re.split(r"", pyargs.in_fieldnames)
+        outdict = {}
 
-                reader = csv.DictReader(
-                    csvfile, fieldnames=_in_fieldnames, delimiter=pyargs.in_delimiter
-                )
-            else:
-                reader = csv.DictReader(csvfile, delimiter=pyargs.in_delimiter)
+        with open(pyargs.input, "r") if len(pyargs.input) > 1 else sys.stdin as csvfile:
+            reader = csv.reader(csvfile, delimiter=DICTIONARY_SEPARATOR)
 
-            # reader = csv.DictReader(csvfile, delimiter=pyargs.in_delimiter)
+            for row in reader:
+                print(row)
+                outdict[row[0]] = row[1]
 
-            firstline = next(reader)
-            # print(firstline)
-
-            _fieldnames = firstline.keys()
-            # print(_fieldnames)
-
-            if pyargs.dict_target:
-                dict_target = pyargs.dict_target
-            else:
-                # dict_target = _fieldnames[0]
-                dict_target = list(_fieldnames).pop(0)
-
-            if pyargs.dict_sources:
-                dict_sources = pyargs.dict_sources
-            else:
-                _temp = list(_fieldnames)
-                _temp.remove(dict_target)
-                dict_sources = _temp
+            outdict_sorted = dict(sorted(outdict.items()))
 
             writer = csv.writer(
                 sys.stdout, delimiter=DICTIONARY_SEPARATOR, quoting=csv.QUOTE_MINIMAL
             )
-
-            outdict = {}
-            # @TODO This part is a bit duplicated. Could be better.
-            # #     Remove duplicated code
-            for item in dict_sources:
-                if not firstline[item] or len(firstline[item]) == 0:
-                    continue
-
-                _v = firstline[item].strip()
-                _k = firstline[dict_target].strip()
-
-                if pyargs.t_nolatinaccents:
-                    _k = _k.lower()
-                    # Obviously incomplete
-                    _k = re.sub(r"[àáâãäå]", "a", _k)
-                    _k = re.sub(r"[èéêë]", "e", _k)
-                    _k = re.sub(r"[ìíîï]", "i", _k)
-                    _k = re.sub(r"[òóôõö]", "o", _k)
-                    _k = re.sub(r"[ñ]", "n", _k)
-                    _k = re.sub(r"[ç]", "c", _k)
-
-                if pyargs.t_lowercase:
-                    _k = _k.lower()
-                elif pyargs.t_uppercase:
-                    _k = _k.upper()
-
-                if _k in outdict and outdict[_k] != _v and not pyargs.ignore_warnings:
-                    print(f"{_k} repeated", sys.stderr)
-
-                outdict[_k] = _v
-
-            for row in reader:
-                for item in dict_sources:
-                    if not row[item] or len(row[item]) == 0:
-                        continue
-
-                    _v = row[item].strip()
-                    _k = row[dict_target].strip()
-
-                    if pyargs.t_nolatinaccents:
-                        _k = _k.lower()
-                        # Obviously incomplete
-                        _k = re.sub(r"[àáâãäå]", "a", _k)
-                        _k = re.sub(r"[èéêë]", "e", _k)
-                        _k = re.sub(r"[ìíîï]", "i", _k)
-                        _k = re.sub(r"[òóôõö]", "o", _k)
-                        _k = re.sub(r"[ñ]", "n", _k)
-                        _k = re.sub(r"[ç]", "c", _k)
-
-                    if pyargs.t_lowercase:
-                        _k = _k.lower()
-                    elif pyargs.t_uppercase:
-                        _k = _k.upper()
-
-                    if (
-                        _k in outdict
-                        and outdict[_k] != _v
-                        and not pyargs.ignore_warnings
-                    ):
-                        print(f"{_k} repeated", sys.stderr)
-
-                    outdict[_k] = _v
-
-                    # outdict[firstline[item].strip()] = firstline[dict_target].strip()
-                # writer.writerow(row)
-
-            outdict_sorted = dict(sorted(outdict.items()))
-
-            # print(outdict)
-            # outdict
-
             for key, value in outdict_sorted.items():
                 writer.writerow([key, value])
-
-            # # writer.writeheader()
-            # writer.writerow(firstline)
-
-            # for row in reader:
-            #     writer.writerow(row)
 
         return self.EXIT_OK
 
