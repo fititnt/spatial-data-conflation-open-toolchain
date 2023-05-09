@@ -336,6 +336,16 @@ class Cli:
             default=None,
         )
 
+        custom_group = parser.add_argument_group("Other")
+
+        custom_group.add_argument(
+            "--preprocessor-item-custom-inep",
+            help="Custom feature not yet documented",
+            dest="prepitem_custom_inep",
+            required=False,
+            nargs="?",
+        )
+
         return parser.parse_args()
 
     def execute_cli(self, pyargs, stdin=STDIN, stdout=sys.stdout, stderr=sys.stderr):
@@ -404,6 +414,12 @@ class Cli:
                     cast_float=pyargs.cast_float,
                     ignore_warnings=pyargs.ignore_warnings,
                 )
+
+                if pyargs.prepitem_custom_inep:
+                    formated_row = _zzz_format_custom_inep(
+                        formated_row, pyargs.prepitem_custom_inep
+                    )
+                    # raise ValueError(pyargs.prepitem_custom_inep)
 
                 row_v2 = row_item_column_add(
                     formated_row,
@@ -726,7 +742,7 @@ def _zzz_format_name_place_br(value: str):
         return value
 
     term = string.capwords(value.strip())
-    term2 = re.sub("\s\s+", " ", term)
+    term2 = re.sub("\\s\\s+", " ", term)
 
     # @TODO deal with Do Da De
 
@@ -738,7 +754,20 @@ def _zzz_format_name_street_br(value: str):
         return value
 
     term = string.capwords(value.strip())
-    term2 = re.sub("\s\s+", " ", term)
+    term2 = re.sub("\\s\\s+", " ", term)
+
+    # @TODO deal with Do Da De
+    # @TODO deal with abbreviations
+
+    return term2
+
+
+def _zzz_format_name_school_br(value: str):
+    if not value or not isinstance(value, str):
+        return value
+
+    term = string.capwords(value.strip())
+    term2 = re.sub("\\s\\s+", " ", term)
 
     # @TODO deal with Do Da De
     # @TODO deal with abbreviations
@@ -769,6 +798,51 @@ def _zzz_format_phone_br(value: str):
     #     if len(value) == 8:
     #         return re.sub(r"(\d{5})(\d{3})", r"\1-\2", value)
     return False
+
+escolas_dict = {
+    'ESC EST ENS FUN': 'Escola Estadual Ensino Fundamental'
+}
+
+# pytest -vv src/csv2geojson/csv2geojson.py --doctest-modules
+def _zzz_format_custom_inep(item: dict, source_column: str = "Endereço") -> dict:
+    """_summary_
+
+    Args:
+        item (dict): _description_
+        source_column (str, optional): _description_. Defaults to "Endereço".
+
+    Returns:
+        dict: _description_
+
+    >>> d1 = "RUA LEONILLA HANSEN, 182 JOANETA. 95166-000 Picada Café - RS."
+    >>> item1 = {"Endereço": d1}
+    >>> r1 = _zzz_format_custom_inep(item1)
+    >>> r1['addr:city']
+    'Picada'
+    >>> r1['addr:postcode']
+    '95166-000'
+    """
+    result = item
+    addr_raw = item[source_column]
+
+    logradouro_arr = []
+    parts = addr_raw.split(" ")
+    while len(parts) > 0:
+        token = parts.pop(0)
+        # @TODO do the regex
+        if len(token) == 9 and token[5] == "-":
+            result["addr:postcode"] = token
+            result["addr:city"] = parts.pop(0)
+            break
+
+        logradouro_arr.append(token)
+
+    result["__addr:street"] = _zzz_format_name_street_br(
+        " ".join(logradouro_arr).strip(".")
+    )
+    # result["__addr:street"] = result["__addr:street"]p('.')
+
+    return result
 
 
 def exec_from_console_scripts():
