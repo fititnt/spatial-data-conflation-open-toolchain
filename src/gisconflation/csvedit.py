@@ -29,12 +29,14 @@
 # import os
 import argparse
 import csv
-import json
+# import json
 import re
 import sys
-import string
 
 from gisconflation.util import parse_argument_values
+# import string
+
+# from gisconflation.util import parse_argument_values
 
 # try:
 #     import geocoder
@@ -200,6 +202,32 @@ class Cli:
             nargs="?",
         )
 
+        filter_group = parser.add_argument_group(
+            "Filter rows"
+        )
+
+        filter_group.add_argument(
+            "--contain-and",
+            help="If defined, only results that match all clauses"
+            " will appear on output. Accept multiple values."
+            "--contain-and=tag1=value1 --contain-and=tag2=value2",
+            dest="contain_and",
+            nargs="?",
+            action="append",
+        )
+
+        filter_group.add_argument(
+            "--filter-contain",
+            help="Filter one or more fields for contain a string"
+            "Use '|||' to divide the field and the string. "
+            "Accept multiple values. "
+            "Example: "
+            "--filter-contain='name|||hospital'",
+            dest="filter_contain",
+            nargs="?",
+            action="append",
+        )
+
         # parser.add_argument(
         #     "--output-type",
         #     help="Change the default output type",
@@ -333,6 +361,18 @@ class Cli:
 
         # print("TODO")
 
+        _contain_and = {}
+        if pyargs.contain_and:
+            for item in pyargs.contain_and:
+                if item:
+                    if item.find("="):
+                        _key, _val = item.split("=")
+                        _contain_and[_key] = _val
+                    else:
+                        _contain_and[_key] = True
+
+        filter_contain=parse_argument_values(pyargs.filter_contain)
+
         # @TODO stdin does not yet allow non UTF8 customization (will pass as it is)
         # @see https://stackoverflow.com/questions/5004687
         with open(pyargs.input, "r", encoding=pyargs.in_encoding) if len(
@@ -361,7 +401,44 @@ class Cli:
             writer.writeheader()
             writer.writerow(firstline)
 
+            # @TODO bug with both conditions must be fixed.
+
             for row in reader:
+
+                # @TODO move out of here
+                if _contain_and:
+                    _count = len(_contain_and.keys())
+
+                    for _key, _val in _contain_and.items():
+                        if _key not in row:
+                            raise SyntaxError(f"key {_key} not in {row}")
+                            # return False
+                        # print(item)
+                        if _val is not True and _val != row[_key]:
+                            continue
+                        _count -= 1
+
+                    if _count > 0:
+                        continue
+                
+                if filter_contain:
+                    # raise ValueError(filter_contain)
+                    _count2 = len(filter_contain.keys())
+
+                    for _key, _val in filter_contain.items():
+                        _val = _val.lower()
+
+                        if _key not in row:
+                            raise SyntaxError(f"key {_key} not in {row}")
+                            # return False
+
+                        if _val is not True and row[_key].lower().find(_val) == -1:
+                            continue
+                        _count2 -= 1
+
+                    if _count2 > 0:
+                        continue
+
                 writer.writerow(row)
 
         return self.EXIT_OK
