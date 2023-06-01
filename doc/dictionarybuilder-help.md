@@ -5,7 +5,8 @@ usage: dictionarybuilder [-h] [--input-delimiter [IN_DELIMITER]]
                          [--dict-target-key [DICT_TARGET]]
                          [--dict-source-key [DICT_SOURCES]]
                          [--transform-uppercase] [--transform-lowercase]
-                         [--transform-no-latin-accents] [--ignore-warnings]
+                         [--transform-no-latin-accents] [--logfile [LOGFILE]]
+                         [--ignore-warnings]
                          input
 
 ------------------------------------------------------------------------------
@@ -44,6 +45,7 @@ options:
                         Force all source values to lowercase
   --transform-no-latin-accents
                         Remove some diacrilics of latin script
+  --logfile [LOGFILE]   Path to a file to log warnings and other information
   --ignore-warnings     Ignore some errors (duplicated key / ambiguous
                         results)
 

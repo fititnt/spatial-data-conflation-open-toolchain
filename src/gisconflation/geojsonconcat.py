@@ -19,8 +19,8 @@
 #       COMPANY:  EticaAI
 #       LICENSE:  GNU Affero General Public License v3.0 or later
 #                 SPDX-License-Identifier: AGPL-3.0-or-later
-#       VERSION:  v0.1.0
-#       CREATED:  2023-04-28 14:17 BRT
+#       VERSION:  v1.0.0
+#       CREATED:  2023-05-31 11:23 BRT
 # ==============================================================================
 
 import argparse
@@ -29,29 +29,11 @@ import csv
 # import csv
 # import dataclasses
 import json
-import re
+
+# import re
 import sys
-from csv2geojson.csv2geojson import _zzz_format_phone_br
 
-from gisconflation.util import AttributesEditor
-
-# import logging
-# from typing import List, Type
-
-# from .util import AttributesEditor, parse_argument_values
-
-# geojsonconcat tests/temp/dataset_a.geojson tests/temp/dataset_b.geojson
-# geojsonconcat tests/temp/dataset_a.geojson tests/temp/dataset_b.geojson > tests/temp/dataset_a+b.geojson
-
-# geojsonconcat tests/temp/dataset_a.geojson /workspace/git/fititnt/openstreetmap-vs-dados-abertos-brasil/data/tmp/DATASUS-tbEstabelecimento.csv
-# geojsonconcat tests/temp/dataset_a.geojson /workspace/git/fititnt/openstreetmap-vs-dados-abertos-brasil/data/tmp/DATASUS-tbEstabelecimento.csv > tests/temp/dataset_csv_a+b.geojson
-# geojsonconcat tests/temp/iede.rs.gov.br_Hospitais-no-RS_v2.geojson /workspace/git/fititnt/openstreetmap-vs-dados-abertos-brasil/data/tmp/DATASUS-tbEstabelecimento.csv > tests/temp/iede.rs.gov.br_Hospitais-no-RS_v2_plusmetadata.geojson
-
-# other repo
-# geojsonconcat data/tmp/DATASUS-tbEstabelecimento__RS.geojson data/tmp/ReceitaFederal_CNPJ_Estabelecimentos__RS_2023-05-09.csv
-# geojsonconcat data/tmp/DATASUS-tbEstabelecimento__RS.geojson data/tmp/ReceitaFederal_CNPJ_Estabelecimentos__RS_2023-05-09.csv
-
-__VERSION__ = "0.1.0"
+__VERSION__ = "1.0.0"
 
 PROGRAM = "geojsonconcat"
 
@@ -59,7 +41,7 @@ PROGRAM = "geojsonconcat"
 # https://www.rfc-editor.org/rfc/rfc8142.html
 DESCRIPTION = """
 ------------------------------------------------------------------------------
-[DRAFT] Concat 2 or more GeoJSON files into GeoJSON (RFC 7946) or
+Concat 2 or more GeoJSON files into GeoJSON (RFC 7946) or
 GeoJSON Text Sequences (RFC 8142)
 
 @TODO for input files know to be GeoJSONSeq, read line by line
@@ -80,6 +62,11 @@ __EPILOGUM__ = """
                             EXEMPLŌRUM GRATIĀ
 ------------------------------------------------------------------------------
     {0} --help
+
+    {0} input-a.geojson input-b.geojson > merged-a+b.geojson
+
+    {0} --format-output=RFC8142 input-a.geojson input-b.geojson \
+> merged-a+b.geojsonseq
 
 ------------------------------------------------------------------------------
                             EXEMPLŌRUM GRATIĀ
@@ -132,7 +119,7 @@ class Cli:
         # @see https://datatracker.ietf.org/doc/html/rfc8142
         parser.add_argument(
             "--format-output",
-            help="[DRAFT] output format GeoJSON (RFC7946) or GeoJSON Text Sequences (RFC 8142)",
+            help="Output format GeoJSON (RFC7946) or GeoJSON Text Sequences (RFC 8142)",
             dest="format_output",
             default="RFC7946",
             required=False,
@@ -158,7 +145,7 @@ class Cli:
 
 # class GeoJSONMerger:
 class GeoJSOnConcater:
-    def __init__(self, inputs: list, output_format: str = "RFC8142") -> None:
+    def __init__(self, inputs: list, output_format: str = None) -> None:
         self.inputs = inputs
         self.output_format = output_format
 
@@ -193,9 +180,9 @@ class GeoJSOnConcater:
         count_files = len(self.inputs)
 
         for infile in self.inputs:
-            print("TODO", infile)
+            # print("TODO", infile)
 
-            # @TODO optimize if know upfront is GeoJSONset (maybe file extension)
+            # @TODO optimize if know upfront is GeoJSONseq (maybe file extension)
             infile_str = self._loader_temp(infile)
             infile_obj = json.loads(infile_str)
 

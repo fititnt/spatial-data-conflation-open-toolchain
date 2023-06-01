@@ -1,11 +1,9 @@
 # spatial-data-conflation-open-toolchain
-**[EARLY DRAFT] Open, free to use, toolchain for geospatial data conflation. Command-line interface for file manipulation.** _See geojson-diff.py from <https://github.com/fititnt/openstreetmap-vs-dados-abertos-brasil>._
-
 [![GitHub](https://img.shields.io/badge/GitHub-fititnt%20spatial--data--conflation--open--toolchain-lightgrey?logo=github&style=social[fititnt/geojson-diff] "GitHub")](https://github.com/fititnt/spatial-data-conflation-open-toolchain)
-
 [![Pypi: gis-conflation-toolchain](https://img.shields.io/badge/python%20pypi-gis--conflation--toolchain-brightgreen[Python] 
  "Pypi: gis-conflation-toolchain")](https://pypi.org/project/gis-conflation-toolchain)
 
+**[EARLY DRAFT] Open, free to use, toolchain for geospatial data conflation. Command-line interface for file manipulation.** _See geojson-diff.py from <https://github.com/fititnt/openstreetmap-vs-dados-abertos-brasil>._
 
 ## Installing
 
@@ -38,6 +36,9 @@ Rebuld documentation with
 
 ### geojsondiff
 - [doc/geojsondiff-help.md](doc/geojsondiff-help.md)
+
+### geojsonconcat
+- [doc/geojsonconcat-help.md](doc/geojsonconcat-help.md)
 
 ### geojsonedit
 - [doc/geojsonedit-help.md](doc/geojsonedit-help.md)

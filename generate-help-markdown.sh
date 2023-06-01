@@ -17,6 +17,10 @@ printf '```\n' > doc/dictionarybuilder-help.md
 dictionarybuilder --help >> doc/dictionarybuilder-help.md
 printf '\n```' >> doc/dictionarybuilder-help.md
 
+printf '```\n' > doc/geojsonconcat-help.md
+geojsonconcat --help >> doc/geojsonconcat-help.md
+printf '\n```' >> doc/geojsonconcat-help.md
+
 printf '```\n' > doc/geojsondiff-help.md
 geojsondiff --help >> doc/geojsondiff-help.md
 printf '\n```' >> doc/geojsondiff-help.md

@@ -13,6 +13,7 @@ usage: csv2geojson [-h] --lat [LAT] --lon [LON]
                    [--value-phone-br [VALUE_PHONE_BR]]
                    [--value-name-place-br [VALUE_NAME_PLACE_BR]]
                    [--value-name-street-br [VALUE_NAME_STREET_BR]]
+                   [--preprocessor-item-custom-inep [PREPITEM_CUSTOM_INEP]]
                    input
 
 ------------------------------------------------------------------------------
@@ -90,6 +91,10 @@ Convert/preprocess data from input, including generate new fields:
   --value-name-street-br [VALUE_NAME_STREET_BR]
                         One or more columsn to format as name of street
                         (Locale BR, 'logradouro')
+
+Other:
+  --preprocessor-item-custom-inep [PREPITEM_CUSTOM_INEP]
+                        Custom feature not yet documented
 
 ------------------------------------------------------------------------------
                             EXEMPLŌRUM GRATIĀ

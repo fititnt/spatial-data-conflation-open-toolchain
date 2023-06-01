@@ -799,9 +799,9 @@ def _zzz_format_phone_br(value: str):
     #         return re.sub(r"(\d{5})(\d{3})", r"\1-\2", value)
     return False
 
-escolas_dict = {
-    'ESC EST ENS FUN': 'Escola Estadual Ensino Fundamental'
-}
+
+escolas_dict = {"ESC EST ENS FUN": "Escola Estadual Ensino Fundamental"}
+
 
 # pytest -vv src/csv2geojson/csv2geojson.py --doctest-modules
 def _zzz_format_custom_inep(item: dict, source_column: str = "Endereço") -> dict:
@@ -821,6 +821,12 @@ def _zzz_format_custom_inep(item: dict, source_column: str = "Endereço") -> dic
     'Picada'
     >>> r1['addr:postcode']
     '95166-000'
+    >>> d1 = "RUA DOS ANDRADAS, 1001 CONJUNTO 301. CENTRO HISTORICO. \
+    ... 90020-015 Porto Alegre - RS."
+    >>> item2 = {"Endereço": d1}
+    >>> r2 = _zzz_format_custom_inep(item2)
+    >>> r2['addr:housenumber']
+    '1001'
     """
     result = item
     addr_raw = item[source_column]
@@ -836,6 +842,12 @@ def _zzz_format_custom_inep(item: dict, source_column: str = "Endereço") -> dic
             break
 
         logradouro_arr.append(token)
+
+    if addr_raw.find(", ") > -1:
+        parts2 = addr_raw.split(", ")
+        parts2b = parts2[1].split(" ")
+        if parts2b[0].isnumeric():
+            result["addr:housenumber"] = parts2b[0]
 
     result["__addr:street"] = _zzz_format_name_street_br(
         " ".join(logradouro_arr).strip(".")
