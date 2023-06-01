@@ -54,12 +54,15 @@ from gisconflation.util import AttributesEditor
 __VERSION__ = "0.1.0"
 
 PROGRAM = "geojsonconcat"
+
+# https://www.rfc-editor.org/rfc/rfc7946
+# https://www.rfc-editor.org/rfc/rfc8142.html
 DESCRIPTION = """
 ------------------------------------------------------------------------------
-[DRAFT] GeoJSON simple merger
+[DRAFT] Concat 2 or more GeoJSON files into GeoJSON (RFC 7946) or
+GeoJSON Text Sequences (RFC 8142)
 
-Merge extra attributes from an GeoJSON (likely the one with more metadata, but
-not accurate geometry) into another GeoJSON.
+@TODO for input files know to be GeoJSONSeq, read line by line
 
 ------------------------------------------------------------------------------
 """.format(
@@ -116,261 +119,48 @@ class Cli:
             epilog=__EPILOGUM__,
         )
 
-        parser.add_argument("geodataset_a", help="GeoJSON dataset 'A'")
-        parser.add_argument("geodataset_b", help="GeoJSON dataset 'B'")
+        parser.add_argument(
+            "inputs", help="One or more input GeoJSON/GeoJSONSeq", nargs="+"
+        )
+        # parser.add_argument("geodataset_b", help="GeoJSON dataset 'B'")
 
         # # @TODO maybe implement GeoJSONSeq
         # parser.add_argument("input", help="Input GeoJSON / GeoJSONSeq. Use - for stdin")
         # # parser.add_argument("geodataset_b", help="GeoJSON dataset 'B'")
 
+        # @see https://stevage.github.io/ndgeojson/
+        # @see https://datatracker.ietf.org/doc/html/rfc8142
         parser.add_argument(
             "--format-output",
-            help="Path to output file",
+            help="[DRAFT] output format GeoJSON (RFC7946) or GeoJSON Text Sequences (RFC 8142)",
             dest="format_output",
-            default="auto",
+            default="RFC7946",
             required=False,
-            choices=["auto", "geojson", "geojsonseq"],
+            choices=["RFC7946", "RFC8142"],
+            # choices=["auto", "geojson", "geojsonseq"],
             nargs="?",
         )
-
-        edit = parser.add_argument_group("Change properties from each item")
-
-        edit.add_argument(
-            "--rename-attribute",
-            help="Rename attribute (if exist). "
-            "Use '||' to divide the source key and target key. "
-            "Accept multiple values. "
-            "Example: "
-            "--rename-attribute='NAME|||name' --rename-attribute='CITY|||addr:city'",
-            dest="rename_attr",
-            nargs="?",
-            action="append",
-        )
-
-        # Old versions of csv2geojson uses only one |
-        edit.add_argument(
-            "--value-fixed",
-            help="Define a fixed string for every value of a column, "
-            "For multiple, use multiple times this parameter. "
-            "Source vs destiny column must be divided by |||. "
-            "Example: <[ --value-fixed='source|||BR:DATASUS' ]>",
-            dest="value_fixed",
-            nargs="?",
-            # type=lambda x: x.split("||"),
-            action="append",
-            default=None,
-        )
-
-        edit.add_argument(
-            "--value-norm-name-place",
-            help="Column to normalize value (strategy: name of place). "
-            "Accept multiple options. Example: "
-            "--value-norm-name-place='name' --value-norm-name-place='alt_name'",
-            dest="value_name_place",
-            nargs="?",
-            # type=lambda x: x.split("||"),
-            action="append",
-            default=None,
-        )
-
-        filter = parser.add_argument_group("Options for filter input items completely")
 
         return parser.parse_args()
 
     def execute_cli(self, pyargs, stdin=STDIN, stdout=sys.stdout, stderr=sys.stderr):
-        # logger = logging.getLogger()
-        # logger.setLevel(logging.INFO)
-        # if pyargs.outlog:
-        #     fh = logging.FileHandler(pyargs.outlog)
-        #     logger.addHandler(fh)
-        # else:
-        #     ch = logging.StreamHandler()
-        #     logger.addHandler(ch)
-
-        # normalize_prop = True
-        # skip_invalid_geometry = True
-
-        # # raise ValueError(parse_argument_values(pyargs.value_fixed))
-        # # print(parse_argument_values(pyargs.value_fixed))
-
-        # gitem = GeoJSONItemEditor(
-        #     rename_attr=parse_argument_values(pyargs.rename_attr),
-        #     value_fixed=parse_argument_values(pyargs.value_fixed),
-        #     value_name_place=pyargs.value_name_place,
-        #     normalize_prop=normalize_prop,
-        #     skip_invalid_geometry=skip_invalid_geometry,
-        # )
-        # gedit = GeoJSONFileEditor(pyargs.input, gitem)
-        # gedit.output()
-
-        # skip_invalid_geometry: True
-
-        # # geodiff.debug()
-        gmerger = GeoJSONMerger(
-            geodataset_a=pyargs.geodataset_a,
-            geodataset_b=pyargs.geodataset_b,
+        gconcat = GeoJSOnConcater(
+            inputs=pyargs.inputs,
+            # geodataset_b=pyargs.geodataset_b,
             # skip_invalid_geometry=True,
         )
         # print("TODO")
 
-        gmerger.output()
+        gconcat.output()
         # gmerger.debug()
         return self.EXIT_OK
 
 
-class GeoJSONMerger:
-    def __init__(self, geodataset_a, geodataset_b) -> None:
-        self.geodataset_a = geodataset_a
-        self.geodataset_b = geodataset_b
-
-        # @TODO make it flexible
-        self.key_a = "ref:CNES"
-        self.key_b = "CO_CNES"
-        self.map_b = {
-            "NU_CNPJ": "ref:vatin",
-            "NU_CNPJ_MANTENEDORA": "operator:ref:vatin",
-            "CO_CEP": "addr:postcode",
-            "NO_EMAIL": "email",
-            "NU_TELEFONE": "phone",
-        }
-        self.map_b_callback = {
-            "NU_CNPJ": lambda x: f"BR{x}",
-            "NU_CNPJ_MANTENEDORA": lambda x: f"BR{x}",
-            "CO_CEP": lambda x: re.sub(r"(\d{5})(\d{3})", r"\1-\2", x),
-            "NO_EMAIL": lambda x: x.lower(),
-            "NU_TELEFONE": _zzz_format_phone_br,
-        }
-
-        self.in_a = []
-        self.in_b = []
-        self.out = []
-        self.out_dict = {}
-
-        self.statistics = {
-            "a_items": 0,
-            "a_items_valid": 0,
-            "b_items": 0,
-            "b_items_valid": 0,
-            "ab_match": 0,
-        }
-
-        self._init_a()
-        self._init_b()
-
-    def _init_a(self) -> None:
-        a_str = self._loader_temp(self.geodataset_a)
-
-        a_data = json.loads(a_str)
-        for item in a_data["features"]:
-            self.statistics["a_items"] += 1
-            if not "properties" in item or not item["properties"]:
-                raise SyntaxError(item)
-
-            if not self.key_a in item["properties"]:
-                raise SyntaxError([self.key_a, item])
-
-            key_active = str(item["properties"][self.key_a])
-            if key_active in self.out_dict:
-                # Improve this err handling
-                print(f"Repeated value {key_active}")
-
-            self.statistics["a_items_valid"] += 1
-            self.out_dict[key_active] = item
-            # print(item)
-
-    def _init_b(self) -> None:
-        # @TODO refactor this part
-        if self.geodataset_b.lower().endswith((".csv", ".tsv", ".tab")):
-            encoding = "latin-1"
-            # _delimiter = get_delimiter(self.geodataset_b, encoding)
-            _delimiter = ";"
-
-            with open(self.geodataset_b, "r", encoding=encoding) as csvfile:
-                reader = csv.DictReader(csvfile, delimiter=_delimiter)
-                aedit = AttributesEditor(normalize_prop=True)
-                for row in reader:
-                    self.statistics["b_items"] += 1
-                    if not self.key_b in row:
-                        raise SyntaxError([self.key_b, item])
-
-                    key_active = str(row[self.key_b])
-
-                    self.statistics["b_items_valid"] += 1
-                    if key_active not in self.out_dict:
-                        continue
-                    self.statistics["ab_match"] += 1
-
-                    _props = self.out_dict[key_active]["properties"]
-                    for _key, _val in row.items():
-                        # @TODO allow some filtering
-                        # _props[_key] = _val
-
-                        if self.map_b_callback and _key in self.map_b_callback:
-                            if _val:
-                                _val = self.map_b_callback[_key](_val)
-
-                        if self.map_b and _key in self.map_b:
-                            _newkey = self.map_b[_key]
-                            _props[_newkey] = _val
-                        else:
-                            _props[f"__b_{_key}"] = _val
-
-                    _props2 = aedit.edit(_props)
-
-                    # self.out_dict[key_active]["properties"] = _props
-                    self.out_dict[key_active]["properties"] = _props2
-                    # print(row)
-                    # print(row['first_name'], row['last_name'])
-
-            return True
-
-        b_str = self._loader_temp(self.geodataset_b)
-
-        b_data = json.loads(b_str)
-
-        for item in b_data["features"]:
-            self.statistics["b_items"] += 1
-            if (
-                not "properties" in item
-                or not item["properties"]
-                or not isinstance(item["properties"], dict)
-            ):
-                continue
-                # raise SyntaxError(item)
-
-            if not self.key_b in item["properties"]:
-                raise SyntaxError([self.key_b, item])
-
-            key_active = str(item["properties"][self.key_b])
-
-            self.statistics["b_items_valid"] += 1
-
-            if key_active not in self.out_dict:
-                continue
-
-            self.statistics["ab_match"] += 1
-            # raise ValueError('deu')
-            # print(key_active, type(key_active))
-            # print(self.out_dict[key_active])
-            # print('')
-            # print(self.out_dict[key_active]["properties"])
-            # print(item)
-
-            _props = self.out_dict[key_active]["properties"]
-
-            for _key, _val in item["properties"].items():
-                # @TODO allow some filtering
-                # _props[_key] = _val
-                _props[f"__b_{_key}"] = _val
-
-            # _props = {
-            #     **self.out_dict[key_active]["properties"],
-            #     **item["properties"][self.key_b],
-            # }
-            # self.out_dict[key_active]["properties"].update(
-            #     item["properties"][self.key_b]
-            # )
-            self.out_dict[key_active]["properties"] = _props
+# class GeoJSONMerger:
+class GeoJSOnConcater:
+    def __init__(self, inputs: list, output_format: str = "RFC8142") -> None:
+        self.inputs = inputs
+        self.output_format = output_format
 
     def _loader_temp(self, input_ptr: str):
         # @TODO make this efficient for very large files
@@ -396,15 +186,50 @@ class GeoJSONMerger:
 
     def output(self):
         # @TODO keep other metadata at top level, if exist
-        print('{"type": "FeatureCollection", "features": [')
-        count = len(self.out_dict.keys())
-        for _key, item in self.out_dict.items():
-            count -= 1
-            line_str = json.dumps(item, ensure_ascii=False)
-            if count > 0:
-                line_str += ","
-            print(line_str)
-        print("]}")
+
+        if self.output_format != "RFC8142":
+            print('{"type": "FeatureCollection", "features": [')
+
+        count_files = len(self.inputs)
+
+        for infile in self.inputs:
+            print("TODO", infile)
+
+            # @TODO optimize if know upfront is GeoJSONset (maybe file extension)
+            infile_str = self._loader_temp(infile)
+            infile_obj = json.loads(infile_str)
+
+            if "features" not in infile_obj:
+                raise SyntaxError(f"File {infile} not GeoJSON. Must have features")
+
+            count_files -= 1
+            count_items_now = len(infile_obj["features"])
+
+            for item in infile_obj["features"]:
+                count_items_now -= 1
+                line_str = json.dumps(item, ensure_ascii=False)
+                if self.output_format != "RFC8142" and (
+                    count_items_now > 0 or count_files > 0
+                ):
+                    line_str += ","
+
+                # @TODO deal with geojsonseq RS on this part
+
+                # https://www.rfc-editor.org/rfc/rfc8142
+                if self.output_format == "RFC8142":
+                    print(f"\x1e{line_str}\n", sep="", end="")
+                else:
+                    print(line_str)
+
+        # count = len(self.out_dict.keys())
+        # for _key, item in self.out_dict.items():
+        #     count -= 1
+        #     line_str = json.dumps(item, ensure_ascii=False)
+        #     if count > 0:
+        #         line_str += ","
+        #     print(line_str)
+        if self.output_format != "RFC8142":
+            print("]}")
 
         # print("")
         # self.debug()
