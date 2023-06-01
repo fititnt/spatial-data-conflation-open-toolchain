@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # ==============================================================================
 #
-#          FILE:  geojsonmerger.py
+#          FILE:  geojsonconcat.py
 #
-#         USAGE:  geojsonmerger --help
-#                 ./src/gisconflation/geojsonmerger.py --help
+#         USAGE:  geojsonconcat --help
+#                 ./src/gisconflation/geojsonconcat.py --help
 #
 #   DESCRIPTION:  ---
 #
@@ -40,20 +40,20 @@ from gisconflation.util import AttributesEditor
 
 # from .util import AttributesEditor, parse_argument_values
 
-# geojsonmerger tests/temp/dataset_a.geojson tests/temp/dataset_b.geojson
-# geojsonmerger tests/temp/dataset_a.geojson tests/temp/dataset_b.geojson > tests/temp/dataset_a+b.geojson
+# geojsonconcat tests/temp/dataset_a.geojson tests/temp/dataset_b.geojson
+# geojsonconcat tests/temp/dataset_a.geojson tests/temp/dataset_b.geojson > tests/temp/dataset_a+b.geojson
 
-# geojsonmerger tests/temp/dataset_a.geojson /workspace/git/fititnt/openstreetmap-vs-dados-abertos-brasil/data/tmp/DATASUS-tbEstabelecimento.csv
-# geojsonmerger tests/temp/dataset_a.geojson /workspace/git/fititnt/openstreetmap-vs-dados-abertos-brasil/data/tmp/DATASUS-tbEstabelecimento.csv > tests/temp/dataset_csv_a+b.geojson
-# geojsonmerger tests/temp/iede.rs.gov.br_Hospitais-no-RS_v2.geojson /workspace/git/fititnt/openstreetmap-vs-dados-abertos-brasil/data/tmp/DATASUS-tbEstabelecimento.csv > tests/temp/iede.rs.gov.br_Hospitais-no-RS_v2_plusmetadata.geojson
+# geojsonconcat tests/temp/dataset_a.geojson /workspace/git/fititnt/openstreetmap-vs-dados-abertos-brasil/data/tmp/DATASUS-tbEstabelecimento.csv
+# geojsonconcat tests/temp/dataset_a.geojson /workspace/git/fititnt/openstreetmap-vs-dados-abertos-brasil/data/tmp/DATASUS-tbEstabelecimento.csv > tests/temp/dataset_csv_a+b.geojson
+# geojsonconcat tests/temp/iede.rs.gov.br_Hospitais-no-RS_v2.geojson /workspace/git/fititnt/openstreetmap-vs-dados-abertos-brasil/data/tmp/DATASUS-tbEstabelecimento.csv > tests/temp/iede.rs.gov.br_Hospitais-no-RS_v2_plusmetadata.geojson
 
 # other repo
-# geojsonmerger data/tmp/DATASUS-tbEstabelecimento__RS.geojson data/tmp/ReceitaFederal_CNPJ_Estabelecimentos__RS_2023-05-09.csv
-# geojsonmerger data/tmp/DATASUS-tbEstabelecimento__RS.geojson data/tmp/ReceitaFederal_CNPJ_Estabelecimentos__RS_2023-05-09.csv
+# geojsonconcat data/tmp/DATASUS-tbEstabelecimento__RS.geojson data/tmp/ReceitaFederal_CNPJ_Estabelecimentos__RS_2023-05-09.csv
+# geojsonconcat data/tmp/DATASUS-tbEstabelecimento__RS.geojson data/tmp/ReceitaFederal_CNPJ_Estabelecimentos__RS_2023-05-09.csv
 
 __VERSION__ = "0.1.0"
 
-PROGRAM = "geojsonmerger"
+PROGRAM = "geojsonconcat"
 DESCRIPTION = """
 ------------------------------------------------------------------------------
 [DRAFT] GeoJSON simple merger
