@@ -759,6 +759,12 @@ def _zzz_format_name_street_br(value: str):
     # @TODO deal with Do Da De
     # @TODO deal with abbreviations
 
+    term2 = term2.replace(" Do ", " do ")
+    term2 = term2.replace(" Dos ", " dos ")
+    term2 = term2.replace(" Da ", " da ")
+    term2 = term2.replace(" Das ", " das ")
+    term2 = term2.replace(" De ", " de ")
+
     return term2
 
 
@@ -802,7 +808,10 @@ def _zzz_format_phone_br(value: str):
 
 escolas_dict = {"ESC EST ENS FUN": "Escola Estadual Ensino Fundamental"}
 
-
+# AVENIDA ALBERTO BINS, 410 5 ANDAR. CENTRO HISTORICO. 90030-140 Porto Alegre - RS.
+#  - addr:floor=4
+# https://pewu.github.io/osm-history/#/node/4163695342
+# addr:floor
 # pytest -vv src/csv2geojson/csv2geojson.py --doctest-modules
 def _zzz_format_custom_inep(item: dict, source_column: str = "Endereço") -> dict:
     """_summary_
@@ -847,11 +856,12 @@ def _zzz_format_custom_inep(item: dict, source_column: str = "Endereço") -> dic
         parts2 = addr_raw.split(", ")
         parts2b = parts2[1].split(" ")
         if parts2b[0].isnumeric():
+            result["addr:street"] = _zzz_format_name_street_br(parts2[0])
             result["addr:housenumber"] = parts2b[0]
 
-    result["__addr:street"] = _zzz_format_name_street_br(
-        " ".join(logradouro_arr).strip(".")
-    )
+    # result["__addr:street"] = _zzz_format_name_street_br(
+    #     " ".join(logradouro_arr).strip(".")
+    # )
     # result["__addr:street"] = result["__addr:street"]p('.')
 
     return result
