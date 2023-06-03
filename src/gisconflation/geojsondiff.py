@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 # ==============================================================================
 #
-#          FILE:  geojson-diff.py
+#          FILE:  geojsondiff.py
 #
-#         USAGE:  ./scripts/geojson-diff.py
-#                 ./scripts/geojson-diff.py --help
+#         USAGE:  geojsondiff --help
+#                 ./src/gisconflation/geojsondiff.py --help
 #
 #   DESCRIPTION:  ---
 #
@@ -21,12 +21,13 @@
 #       COMPANY:  EticaAI
 #       LICENSE:  Public Domain dedication or Zero-Clause BSD
 #                 SPDX-License-Identifier: Unlicense OR 0BSD
-#       VERSION:  v0.6.1
+#       VERSION:  v0.6.2
 #       CREATED:  2023-04-16 22:36 BRT
 #      REVISION:  2023-04-17 02:32 BRT v0.4.0 accept Overpas GeoJSON flavor
 #                 2023-04-18 00:25 BRT v0.5.0 supports Polygon (not just Point)
 #                 2023-04-19 21:52 BRT v0.6.0 draft of diff GeoJSON and JOSM
 #                 2023-04-25 03:58 BRT v0.6.1 miggrade as pip package
+#                 2023-06-03 03:16 BRT v0.6.2 moved to ./src/gisconflation
 # ==============================================================================
 
 import argparse
@@ -46,16 +47,17 @@ from xml.sax.saxutils import escape
 from gisconflation.util import LevenshteinHelper
 
 
-__VERSION__ = "0.6.1"
+__VERSION__ = "0.6.2"
+# VERSION = "0.6.2"
 
 PROGRAM = "geojsondiff"
 DESCRIPTION = """
 ------------------------------------------------------------------------------
-GeoJSON++ diff
+GeoJSON++ diff v{1}
 
 ------------------------------------------------------------------------------
 """.format(
-    __file__
+    __file__, __VERSION__
 )
 
 # https://www.rfc-editor.org/rfc/rfc7946
@@ -161,6 +163,16 @@ class Cli:
 
         pivot = parser.add_argument_group(
             "Parameters used to know how to conflate A and B"
+        )
+
+        parser.add_argument(
+            "--conflation-strategy",
+            help="Conflation strategy.",
+            dest="strategy",
+            default="distance",
+            required=False,
+            choices=["distance", "addr"],
+            nargs="?",
         )
 
         pivot.add_argument(
@@ -350,6 +362,7 @@ class Cli:
         geodiff = GeojsonCompare(
             pyargs.geodataset_a,
             pyargs.geodataset_b,
+            pyargs.strategy,
             crules,
             cprefilters=cprefilters,
             cfilters=cfilters,
@@ -660,11 +673,13 @@ class GeojsonCompare:
         self,
         geodataset_a: str,
         geodataset_b: str,
+        strategy: str,
         crules: Type["ConflationRules"],
         cprefilters: Type["ConflationPrefilters"],
         cfilters: Type["ConflationFilters"],
-        logger,
+        logger=None,
     ) -> None:
+        self.strategy = strategy
         self.distance_okay = crules.distance_okay
         self.crules = crules
         self.cfilters = cfilters
