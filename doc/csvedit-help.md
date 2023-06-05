@@ -4,6 +4,7 @@ usage: csvedit [-h] [--input-delimiter [IN_DELIMITER]]
                [--input-fieldnames [IN_FIELDNAMES]]
                [--output-delimiter [OUT_DELIMITER]]
                [--contain-and [CONTAIN_AND]]
+               [--contain-and-regex [CONTAIN_AND_REGEX]]
                [--filter-contain [FILTER_CONTAIN]]
                input
 
@@ -34,6 +35,12 @@ Filter rows:
                         If defined, only results that match all clauses will
                         appear on output. Accept multiple values.--contain-
                         and=tag1=value1 --contain-and=tag2=value2
+  --contain-and-regex [CONTAIN_AND_REGEX]
+                        If defined, only results that match all clauses will
+                        appear on output. Accept multiple values.Syntax is
+                        python regex.
+                        https://docs.python.org/3/library/re.htmlExample:
+                        --contain-and-regex='name|||hospital.+'
   --filter-contain [FILTER_CONTAIN]
                         Filter one or more fields for contain a stringUse
                         '|||' to divide the field and the string. Accept

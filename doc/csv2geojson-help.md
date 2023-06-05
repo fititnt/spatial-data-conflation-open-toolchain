@@ -1,6 +1,7 @@
 ```
 usage: csv2geojson [-h] --lat [LAT] --lon [LON]
                    [--filter-contain [FILTER_CONTAIN]]
+                   [--filter-contain-regex [FILTER_CONTAIN_REGEX]]
                    [--contain-or [CONTAIN_OR]] [--contain-and [CONTAIN_AND]]
                    [--contain-and-in [CONTAIN_AND_IN]]
                    [--delimiter [DELIMITER]] [--encoding [ENCODING]]
@@ -33,6 +34,12 @@ options:
                         '|||' to divide the field and the string. Accept
                         multiple values. Example: --filter-
                         contain='name|||hospital'
+  --filter-contain-regex [FILTER_CONTAIN_REGEX]
+                        If defined, only results that match all clauses will
+                        appear on output. Accept multiple values.Syntax is
+                        python regex.
+                        https://docs.python.org/3/library/re.htmlExample:
+                        --filter-contain-regex='name|||hospital.+'
   --contain-or [CONTAIN_OR]
                         If defined, only results that match at least one
                         clause will appear on output. Accept multiple values.

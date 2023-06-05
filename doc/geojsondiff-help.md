@@ -2,6 +2,7 @@
 usage: geojsondiff [-h] [--output-diff-geojson [OUTDIFFGEO]]
                    [--output-diff-csv [OUTDIFFCSV]]
                    [--output-diff-tsv [OUTDIFFTSV]] [--output-log [OUTLOG]]
+                   [--conflation-strategy [{distance,addr}]]
                    [--tolerate-distance [TDIST]]
                    [--pivot-key-main [PIVOT_KEY_MAIN]]
                    [--pivot-attr-2 [PIVOT_ATTR_2]]
@@ -15,7 +16,7 @@ usage: geojsondiff [-h] [--output-diff-geojson [OUTDIFFGEO]]
                    geodataset_a geodataset_b
 
 ------------------------------------------------------------------------------
-GeoJSON++ diff
+GeoJSON++ diff v0.6.2
 
 ------------------------------------------------------------------------------
 
@@ -33,6 +34,8 @@ options:
                         Path to output TSV (Tab-separated values) diff file
   --output-log [OUTLOG]
                         Path to output file
+  --conflation-strategy [{distance,addr}]
+                        Conflation strategy.
 
 Parameters used to know how to conflate A and B:
   --tolerate-distance [TDIST]

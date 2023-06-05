@@ -162,6 +162,18 @@ class Cli:
         )
 
         parser.add_argument(
+            "--filter-contain-regex",
+            help="If defined, only results that match all clauses"
+            " will appear on output. Accept multiple values."
+            "Syntax is python regex. https://docs.python.org/3/library/re.html"
+            "Example: "
+            "--filter-contain-regex='name|||hospital.+'",
+            dest="filter_contain_regex",
+            nargs="?",
+            action="append",
+        )
+
+        parser.add_argument(
             "--contain-or",
             help="If defined, only results that match at least one clause"
             " will appear on output. Accept multiple values."
@@ -351,6 +363,12 @@ class Cli:
     def execute_cli(self, pyargs, stdin=STDIN, stdout=sys.stdout, stderr=sys.stderr):
         # input_file = STDIN if pyargs.input == "-" else pyargs.input
 
+        # print(parse_argument_values(
+        #                 pyargs.filter_contain_regex
+        #             ))
+
+        # raise ValueError(pyargs)
+
         _contain_or = {}
         _contain_and = {}
         _contain_and_in = {}
@@ -404,6 +422,9 @@ class Cli:
                     contain_and=_contain_and,
                     contain_and_in=_contain_and_in,
                     filter_contain=parse_argument_values(pyargs.filter_contain),
+                    filter_contain_regex=parse_argument_values(
+                        pyargs.filter_contain_regex
+                    ),
                 ):
                     continue
 
@@ -522,11 +543,17 @@ def geojson_item_contain(
     contain_and: list = None,
     contain_and_in: list = None,
     filter_contain: list = None,
+    filter_contain_regex: list = None,
 ) -> bool:
     if not item:
         return False
 
-    if not contain_or and not contain_and and not contain_and_in:
+    if (
+        not contain_or
+        and not contain_and
+        and not contain_and_in
+        and not filter_contain_regex
+    ):
         return True
 
     if contain_and:
@@ -576,6 +603,18 @@ def geojson_item_contain(
                 # return False
 
             if _val is not True and item[_key].lower().find(_val) == -1:
+                return False
+
+    if filter_contain_regex:
+        # raise ValueError(filter_contain_regex)
+        for _key, _regex in filter_contain_regex.items():
+            if _key not in item:
+                raise SyntaxError(f"key {_key} not in {item}")
+                # return False
+
+            _result = re.match(_regex, item[_key])
+
+            if not _result:
                 return False
 
     return True
@@ -808,8 +847,9 @@ def _zzz_format_phone_br(value: str):
 
 escolas_dict = {"ESC EST ENS FUN": "Escola Estadual Ensino Fundamental"}
 
+
 # AVENIDA ALBERTO BINS, 410 5 ANDAR. CENTRO HISTORICO. 90030-140 Porto Alegre - RS.
-#  - addr:floor=4
+#  - addr:floor=5
 # https://pewu.github.io/osm-history/#/node/4163695342
 # addr:floor
 # pytest -vv src/csv2geojson/csv2geojson.py --doctest-modules
