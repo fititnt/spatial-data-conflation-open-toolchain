@@ -29,11 +29,13 @@
 # import os
 import argparse
 import csv
+
 # import json
 import re
 import sys
 
 from gisconflation.util import parse_argument_values
+
 # import string
 
 # from gisconflation.util import parse_argument_values
@@ -202,9 +204,7 @@ class Cli:
             nargs="?",
         )
 
-        filter_group = parser.add_argument_group(
-            "Filter rows"
-        )
+        filter_group = parser.add_argument_group("Filter rows")
 
         filter_group.add_argument(
             "--contain-and",
@@ -212,6 +212,18 @@ class Cli:
             " will appear on output. Accept multiple values."
             "--contain-and=tag1=value1 --contain-and=tag2=value2",
             dest="contain_and",
+            nargs="?",
+            action="append",
+        )
+
+        filter_group.add_argument(
+            "--contain-and-regex",
+            help="If defined, only results that match all clauses"
+            " will appear on output. Accept multiple values."
+            "Syntax is python regex. https://docs.python.org/3/library/re.html"
+            "Example: "
+            "--contain-and-regex='name|||hospital.+'",
+            dest="contain_and_regex",
             nargs="?",
             action="append",
         )
@@ -371,7 +383,8 @@ class Cli:
                     else:
                         _contain_and[_key] = True
 
-        filter_contain=parse_argument_values(pyargs.filter_contain)
+        filter_contain = parse_argument_values(pyargs.filter_contain)
+        contain_and_regex = parse_argument_values(pyargs.contain_and_regex)
 
         # @TODO stdin does not yet allow non UTF8 customization (will pass as it is)
         # @see https://stackoverflow.com/questions/5004687
@@ -399,12 +412,15 @@ class Cli:
             )
 
             writer.writeheader()
-            writer.writerow(firstline)
+            # writer.writerow(firstline)
+
+            reader2 = list(reader)
+            reader2.insert(0, firstline)
 
             # @TODO bug with both conditions must be fixed.
 
-            for row in reader:
-
+            # for row in reader:
+            for row in reader2:
                 # @TODO move out of here
                 if _contain_and:
                     _count = len(_contain_and.keys())
@@ -420,7 +436,7 @@ class Cli:
 
                     if _count > 0:
                         continue
-                
+
                 if filter_contain:
                     # raise ValueError(filter_contain)
                     _count2 = len(filter_contain.keys())
@@ -437,6 +453,26 @@ class Cli:
                         _count2 -= 1
 
                     if _count2 > 0:
+                        continue
+
+                if contain_and_regex:
+                    # raise ValueError(filter_contain)
+                    _count3 = len(contain_and_regex.keys())
+
+                    for _key, _regex in contain_and_regex.items():
+                        # _val = _val.lower()
+
+                        if _key not in row:
+                            raise SyntaxError(f"key {_key} not in {row}")
+                            # return False
+                        _result = re.match(_regex, row[_key])
+
+                        # if _val is not True and row[_key].lower().find(_val) == -1:
+                        if not _result:
+                            continue
+                        _count3 -= 1
+
+                    if _count3 > 0:
                         continue
 
                 writer.writerow(row)
