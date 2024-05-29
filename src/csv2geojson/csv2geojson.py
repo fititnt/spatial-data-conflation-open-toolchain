@@ -929,31 +929,37 @@ def _zzz_format_custom_inep(item: dict, source_column: str = "Endereço") -> dic
 # addr:floor
 # pytest -vv src/csv2geojson/csv2geojson.py --doctest-modules
 def _zzz_format_custom_cnefe(item: dict) -> dict:
-    """_summary_
+    """Preprocessor for IBGE CNEFE
 
+    @see https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/Dicionario_CNEFE_Censo_2022.xls
     Args:
         item (dict): _description_
-        source_column (str, optional): _description_. Defaults to "Endereço".
 
     Returns:
         dict: _description_
-
-    >>> d1 = "RUA LEONILLA HANSEN, 182 JOANETA. 95166-000 Picada Café - RS."
-    >>> item1 = {"Endereço": d1}
-    >>> r1 = _zzz_format_custom_inep(item1)
-    >>> r1['addr:city']
-    'Picada'
-    >>> r1['addr:postcode']
-    '95166-000'
-    >>> d1 = "RUA DOS ANDRADAS, 1001 CONJUNTO 301. CENTRO HISTORICO. \
-    ... 90020-015 Porto Alegre - RS."
-    >>> item2 = {"Endereço": d1}
-    >>> r2 = _zzz_format_custom_inep(item2)
-    >>> r2['addr:housenumber']
-    '1001'
     """
     result = item
     # addr_raw = item[source_column]
+
+    _COD_ESPECIE = {
+        "1": "Domicílio particular",
+        "2": "Domicílio coletivo",
+        "3": "Estabelecimento agropecuário",
+        "4": "Estabelecimento de ensino",
+        "5": "Estabelecimento de saúde",
+        "6": "Estabelecimento de outras finalidades",
+        "7": "Edificação em construção ou reforma",
+        "8": "Estabelecimento religioso",
+    }
+
+    _NV_GEO_COORD = {
+        "1": "Endereço - coordenada original do Censo 2022",
+        "2": "Endereço - coordenada modificada (apartamentos em um mesmo número no logradouro)",
+        "3": "Endereço - coordenada estimada (endereços originalmente sem coordenadas ou coordenadas inválidas)",
+        "4": "Face de quadra",
+        "5": "Localidade",
+        "6": "Setor censitário",
+    }
 
     if "CEP" not in result or "NOM_SEGLOGR" not in result:
         raise KeyError("Bad file input. Is this CNEFE-like CSV?")
@@ -969,11 +975,47 @@ def _zzz_format_custom_cnefe(item: dict) -> dict:
 
     logradouro.append(result["NOM_SEGLOGR"])
 
-    del result["NOM_TIPO_SEGLOGR"]
-    del result["NOM_TITULO_SEGLOGR"]
-    del result["NOM_SEGLOGR"]
+    if len(result["DSC_ESTABELECIMENTO"]) > 0:
+        result["name"] = result["DSC_ESTABELECIMENTO"]
 
     result["addr:street"] = _zzz_format_name_street_br(" ".join(logradouro))
+
+    if len(result["NUM_ENDERECO"]) > 0:
+        # if result["NUM_ENDERECO"] == "S/N":
+        if result["DSC_MODIFICADOR"] == "SN":
+            result["addr:nohousenumber"] = "yes"
+        else:
+            result["addr:housenumber"] = result["NUM_ENDERECO"]
+
+    addr_extras = []
+    if len(result["DSC_LOCALIDADE"]) > 0:
+        addr_extras.append("localidade=" + result["DSC_LOCALIDADE"])
+
+    if len(result["DSC_MODIFICADOR"]) > 0:
+        addr_extras.append(result["DSC_MODIFICADOR"] + "=" + result["DSC_MODIFICADOR"])
+
+    if len(result["VAL_COMP_ELEM1"]) > 0:
+        addr_extras.append(result["NOM_COMP_ELEM1"] + "=" + result["VAL_COMP_ELEM1"])
+
+    if len(result["VAL_COMP_ELEM2"]) > 0:
+        addr_extras.append(result["NOM_COMP_ELEM2"] + "=" + result["VAL_COMP_ELEM2"])
+
+    if len(result["VAL_COMP_ELEM3"]) > 0:
+        addr_extras.append(result["NOM_COMP_ELEM3"] + "=" + result["VAL_COMP_ELEM3"])
+
+    if len(result["VAL_COMP_ELEM4"]) > 0:
+        addr_extras.append(result["NOM_COMP_ELEM4"] + "=" + result["VAL_COMP_ELEM4"])
+
+    if len(result["VAL_COMP_ELEM5"]) > 0:
+        addr_extras.append(result["NOM_COMP_ELEM5"] + "=" + result["VAL_COMP_ELEM5"])
+
+    result["__meta_addr"] = "\n".join(addr_extras)
+
+    if result["COD_ESPECIE"] in _NV_GEO_COORD:
+        result["__meta_especie"] = _NV_GEO_COORD[result["COD_ESPECIE"]]
+
+    if result["NV_GEO_COORD"] in _COD_ESPECIE:
+        result["__meta_geo_coord"] = _NV_GEO_COORD[result["NV_GEO_COORD"]]
 
     # logradouro_arr = []
     # parts = addr_raw.split(" ")
@@ -998,6 +1040,42 @@ def _zzz_format_custom_cnefe(item: dict) -> dict:
     # #     " ".join(logradouro_arr).strip(".")
     # # )
     # # result["__addr:street"] = result["__addr:street"]p('.')
+
+    # delete other non-used fields
+
+    del result["NOM_TIPO_SEGLOGR"]
+    del result["NOM_TITULO_SEGLOGR"]
+    del result["NOM_SEGLOGR"]
+
+    del result["DSC_ESTABELECIMENTO"]
+
+    del result["COD_UNICO_ENDERECO"]
+    del result["COD_UF"]
+    del result["COD_MUNICIPIO"]
+    del result["COD_DISTRITO"]
+    del result["COD_SUBDISTRITO"]
+    del result["COD_SETOR"]
+    del result["NUM_QUADRA"]
+    del result["NUM_FACE"]
+    del result["DSC_LOCALIDADE"]
+    del result["NUM_ENDERECO"]
+    del result["DSC_MODIFICADOR"]
+    del result["NOM_COMP_ELEM1"]
+    del result["VAL_COMP_ELEM1"]
+    del result["NOM_COMP_ELEM2"]
+    del result["VAL_COMP_ELEM2"]
+    del result["NOM_COMP_ELEM3"]
+    del result["VAL_COMP_ELEM3"]
+    del result["NOM_COMP_ELEM4"]
+    del result["VAL_COMP_ELEM4"]
+    del result["NOM_COMP_ELEM5"]
+    del result["VAL_COMP_ELEM5"]
+    del result["COD_ESPECIE"]
+    del result["NV_GEO_COORD"]
+    # del result["zzzzz"]
+    # del result["zzzzz"]
+    # del result["COD_UNICO_ENDERECO"]
+    # del result["COD_UNICO_ENDERECO"]
 
     return result
 
