@@ -941,6 +941,20 @@ def _zzz_format_custom_cnefe(item: dict) -> dict:
     result = item
     # addr_raw = item[source_column]
 
+    _COD_INDICADOR_FINALIDADE_CONST = {
+        "1": "Residencial",
+        "2": "Não residencial",
+        "3": "Misto",
+        "4": "Indeterminado",
+    }
+
+    _COD_TIPO_ESPECIE = {
+        "101": "Casa",
+        "102": "Casa de vila ou em condomínio",
+        "103": "Apartamento",
+        "104": "Outros",
+    }
+
     _COD_ESPECIE = {
         "1": "Domicílio particular",
         "2": "Domicílio coletivo",
@@ -952,6 +966,13 @@ def _zzz_format_custom_cnefe(item: dict) -> dict:
         "8": "Estabelecimento religioso",
     }
 
+    _COD_INDICADOR_ESTAB_ENDERECO = {
+        "1": "Único",
+        "2": "Múltiplo, com até 10 estabelecimentos no endereço",
+        "3": "Múltiplo, com mais de 10 estabelecimentos no endereço",
+        "4": "Múltiplo, com quantidade de estabelecimentos desconhecida no endereço",
+    }
+
     _NV_GEO_COORD = {
         "1": "Endereço - coordenada original do Censo 2022",
         "2": "Endereço - coordenada modificada (apartamentos em um mesmo número no logradouro)",
@@ -960,6 +981,12 @@ def _zzz_format_custom_cnefe(item: dict) -> dict:
         "5": "Localidade",
         "6": "Setor censitário",
     }
+
+    # Versao baixada em 2024-05-29 tem erro em relacao ao dicionario
+    # Aqui renomeia o campo que faltou um "E"
+    if "COD_TIPO_ESPECI" in result:
+        result["COD_TIPO_ESPECIE"] = result["COD_TIPO_ESPECI"]
+        del result["COD_TIPO_ESPECI"]
 
     if "CEP" not in result or "NOM_SEGLOGR" not in result:
         raise KeyError("Bad file input. Is this CNEFE-like CSV?")
@@ -978,7 +1005,10 @@ def _zzz_format_custom_cnefe(item: dict) -> dict:
     if len(result["DSC_ESTABELECIMENTO"]) > 0:
         result["name"] = result["DSC_ESTABELECIMENTO"]
 
-    result["addr:street"] = _zzz_format_name_street_br(" ".join(logradouro))
+    if result["NOM_TIPO_SEGLOGR"] == "PRACA":
+        result["addr:place"] = _zzz_format_name_street_br(" ".join(logradouro))
+    else:
+        result["addr:street"] = _zzz_format_name_street_br(" ".join(logradouro))
 
     if len(result["NUM_ENDERECO"]) > 0:
         # if result["NUM_ENDERECO"] == "S/N":
@@ -1009,12 +1039,25 @@ def _zzz_format_custom_cnefe(item: dict) -> dict:
     if len(result["VAL_COMP_ELEM5"]) > 0:
         addr_extras.append(result["NOM_COMP_ELEM5"] + "=" + result["VAL_COMP_ELEM5"])
 
-    result["__meta_addr"] = "\n".join(addr_extras)
+    result["__meta_addr"] = ";".join(addr_extras)
 
-    if result["COD_ESPECIE"] in _NV_GEO_COORD:
-        result["__meta_especie"] = _NV_GEO_COORD[result["COD_ESPECIE"]]
+    if result["COD_INDICADOR_FINALIDADE_CONST"] in _COD_INDICADOR_FINALIDADE_CONST:
+        result["__meta_finalidade"] = _COD_INDICADOR_FINALIDADE_CONST[
+            result["COD_INDICADOR_FINALIDADE_CONST"]
+        ]
 
-    if result["NV_GEO_COORD"] in _COD_ESPECIE:
+    if result["COD_TIPO_ESPECIE"] in _COD_TIPO_ESPECIE:
+        result["__meta_tipo_especie"] = _COD_TIPO_ESPECIE[result["COD_TIPO_ESPECIE"]]
+
+    if result["COD_INDICADOR_ESTAB_ENDERECO"] in _COD_INDICADOR_ESTAB_ENDERECO:
+        result["__meta_estab_endereco"] = _COD_INDICADOR_ESTAB_ENDERECO[
+            result["COD_INDICADOR_ESTAB_ENDERECO"]
+        ]
+
+    if result["COD_ESPECIE"] in _COD_ESPECIE:
+        result["__meta_especie"] = _COD_ESPECIE[result["COD_ESPECIE"]]
+
+    if result["NV_GEO_COORD"] in _NV_GEO_COORD:
         result["__meta_geo_coord"] = _NV_GEO_COORD[result["NV_GEO_COORD"]]
 
     # logradouro_arr = []
@@ -1072,8 +1115,9 @@ def _zzz_format_custom_cnefe(item: dict) -> dict:
     del result["VAL_COMP_ELEM5"]
     del result["COD_ESPECIE"]
     del result["NV_GEO_COORD"]
-    # del result["zzzzz"]
-    # del result["zzzzz"]
+    del result["COD_INDICADOR_ESTAB_ENDERECO"]
+    del result["COD_TIPO_ESPECIE"]
+    del result["COD_INDICADOR_FINALIDADE_CONST"]
     # del result["COD_UNICO_ENDERECO"]
     # del result["COD_UNICO_ENDERECO"]
 

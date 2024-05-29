@@ -442,7 +442,8 @@ class Cli:
                     _count2 = len(filter_contain.keys())
 
                     for _key, _val in filter_contain.items():
-                        _val = _val.lower()
+                        if not isinstance(_val, bool):
+                            _val = _val.lower()
 
                         if _key not in row:
                             raise SyntaxError(f"key {_key} not in {row}")
