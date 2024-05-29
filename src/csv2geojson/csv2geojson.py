@@ -358,6 +358,15 @@ class Cli:
             nargs="?",
         )
 
+        # _zzz_format_custom_cnefe
+        custom_group.add_argument(
+            "--preprocessor-complex-cnefe",
+            help="Custom feature not yet documented",
+            dest="prep_complex_cnefe",
+            required=False,
+            action="store_true",
+        )
+
         return parser.parse_args()
 
     def execute_cli(self, pyargs, stdin=STDIN, stdout=sys.stdout, stderr=sys.stderr):
@@ -401,9 +410,11 @@ class Cli:
                     else:
                         raise SyntaxError("contain-and-in requires at least one value")
 
-        with open(pyargs.input, "r", encoding=pyargs.encoding) if len(
-            pyargs.input
-        ) > 1 else sys.stdin as csvfile:
+        with (
+            open(pyargs.input, "r", encoding=pyargs.encoding)
+            if len(pyargs.input) > 1
+            else sys.stdin
+        ) as csvfile:
             reader = csv.DictReader(csvfile, delimiter=pyargs.delimiter)
 
             if pyargs.outfmt == "GeoJSON":
@@ -441,6 +452,10 @@ class Cli:
                         formated_row, pyargs.prepitem_custom_inep
                     )
                     # raise ValueError(pyargs.prepitem_custom_inep)
+
+                if pyargs.prep_complex_cnefe:
+                    formated_row = _zzz_format_custom_cnefe(formated_row)
+                    # raise ValueError(pyargs.prep_complex_cnefe)
 
                 row_v2 = row_item_column_add(
                     formated_row,
@@ -803,6 +818,7 @@ def _zzz_format_name_street_br(value: str):
     term2 = term2.replace(" Da ", " da ")
     term2 = term2.replace(" Das ", " das ")
     term2 = term2.replace(" De ", " de ")
+    term2 = term2.replace(" Sao ", " São ")
 
     return term2
 
@@ -903,6 +919,85 @@ def _zzz_format_custom_inep(item: dict, source_column: str = "Endereço") -> dic
     #     " ".join(logradouro_arr).strip(".")
     # )
     # result["__addr:street"] = result["__addr:street"]p('.')
+
+    return result
+
+
+# AVENIDA ALBERTO BINS, 410 5 ANDAR. CENTRO HISTORICO. 90030-140 Porto Alegre - RS.
+#  - addr:floor=5
+# https://pewu.github.io/osm-history/#/node/4163695342
+# addr:floor
+# pytest -vv src/csv2geojson/csv2geojson.py --doctest-modules
+def _zzz_format_custom_cnefe(item: dict) -> dict:
+    """_summary_
+
+    Args:
+        item (dict): _description_
+        source_column (str, optional): _description_. Defaults to "Endereço".
+
+    Returns:
+        dict: _description_
+
+    >>> d1 = "RUA LEONILLA HANSEN, 182 JOANETA. 95166-000 Picada Café - RS."
+    >>> item1 = {"Endereço": d1}
+    >>> r1 = _zzz_format_custom_inep(item1)
+    >>> r1['addr:city']
+    'Picada'
+    >>> r1['addr:postcode']
+    '95166-000'
+    >>> d1 = "RUA DOS ANDRADAS, 1001 CONJUNTO 301. CENTRO HISTORICO. \
+    ... 90020-015 Porto Alegre - RS."
+    >>> item2 = {"Endereço": d1}
+    >>> r2 = _zzz_format_custom_inep(item2)
+    >>> r2['addr:housenumber']
+    '1001'
+    """
+    result = item
+    # addr_raw = item[source_column]
+
+    if "CEP" not in result or "NOM_SEGLOGR" not in result:
+        raise KeyError("Bad file input. Is this CNEFE-like CSV?")
+
+    # if "CEP" in result:
+    result["addr:postcode"] = _zzz_format_cep(result["CEP"])
+    del result["CEP"]
+
+    logradouro = []
+    logradouro.append(result["NOM_TIPO_SEGLOGR"])
+    if result["NOM_TITULO_SEGLOGR"]:
+        logradouro.append(result["NOM_TITULO_SEGLOGR"])
+
+    logradouro.append(result["NOM_SEGLOGR"])
+
+    del result["NOM_TIPO_SEGLOGR"]
+    del result["NOM_TITULO_SEGLOGR"]
+    del result["NOM_SEGLOGR"]
+
+    result["addr:street"] = _zzz_format_name_street_br(" ".join(logradouro))
+
+    # logradouro_arr = []
+    # parts = addr_raw.split(" ")
+    # while len(parts) > 0:
+    #     token = parts.pop(0)
+    #     # @TODO do the regex
+    #     if len(token) == 9 and token[5] == "-":
+    #         result["addr:postcode"] = token
+    #         result["addr:city"] = parts.pop(0)
+    #         break
+
+    #     logradouro_arr.append(token)
+
+    # if addr_raw.find(", ") > -1:
+    #     parts2 = addr_raw.split(", ")
+    #     parts2b = parts2[1].split(" ")
+    #     if parts2b[0].isnumeric():
+    #         result["addr:street"] = _zzz_format_name_street_br(parts2[0])
+    #         result["addr:housenumber"] = parts2b[0]
+
+    # # result["__addr:street"] = _zzz_format_name_street_br(
+    # #     " ".join(logradouro_arr).strip(".")
+    # # )
+    # # result["__addr:street"] = result["__addr:street"]p('.')
 
     return result
 
