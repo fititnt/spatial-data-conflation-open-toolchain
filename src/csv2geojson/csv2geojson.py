@@ -27,6 +27,7 @@
 
 # import geopandas
 # import os
+from abc import ABC, abstractmethod
 import argparse
 import csv
 import json
@@ -361,10 +362,12 @@ class Cli:
         # _zzz_format_custom_cnefe
         custom_group.add_argument(
             "--preprocessor-complex-cnefe",
-            help="Custom feature not yet documented",
+            help="Preprocessor for IBGE CNEFE 2022"
+            "1: full metadata; 0: code-only; -1: no codes; -999: debug minimal",
             dest="prep_complex_cnefe",
             required=False,
-            action="store_true",
+            type=lambda x: int(x),
+            nargs="?",
         )
 
         return parser.parse_args()
@@ -424,6 +427,9 @@ class Cli:
 
             line_num = -1
 
+            if pyargs.prep_complex_cnefe is not None:
+                prep_cnefe = CustomProcessorCnefe()
+
             for row in reader:
                 line_num += 1
 
@@ -453,8 +459,10 @@ class Cli:
                     )
                     # raise ValueError(pyargs.prepitem_custom_inep)
 
-                if pyargs.prep_complex_cnefe:
-                    formated_row = _zzz_format_custom_cnefe(formated_row)
+                if pyargs.prep_complex_cnefe is not None:
+                    formated_row = prep_cnefe.item(
+                        formated_row, pyargs.prep_complex_cnefe
+                    )
                     # raise ValueError(pyargs.prep_complex_cnefe)
 
                 row_v2 = row_item_column_add(
@@ -923,39 +931,29 @@ def _zzz_format_custom_inep(item: dict, source_column: str = "Endereço") -> dic
     return result
 
 
-# AVENIDA ALBERTO BINS, 410 5 ANDAR. CENTRO HISTORICO. 90030-140 Porto Alegre - RS.
-#  - addr:floor=5
-# https://pewu.github.io/osm-history/#/node/4163695342
-# addr:floor
-# pytest -vv src/csv2geojson/csv2geojson.py --doctest-modules
-def _zzz_format_custom_cnefe(item: dict) -> dict:
-    """Preprocessor for IBGE CNEFE
+class CustomPreprocessorBase(ABC):
+    @abstractmethod
+    def item(self):
+        pass
 
-    @see https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/Dicionario_CNEFE_Censo_2022.xls
-    Args:
-        item (dict): _description_
 
-    Returns:
-        dict: _description_
-    """
-    result = item
-    # addr_raw = item[source_column]
+class CustomProcessorCnefe(CustomPreprocessorBase):
 
-    _COD_INDICADOR_FINALIDADE_CONST = {
+    COD_INDICADOR_FINALIDADE_CONST = {
         "1": "Residencial",
         "2": "Não residencial",
         "3": "Misto",
         "4": "Indeterminado",
     }
 
-    _COD_TIPO_ESPECIE = {
+    COD_TIPO_ESPECIE = {
         "101": "Casa",
         "102": "Casa de vila ou em condomínio",
         "103": "Apartamento",
         "104": "Outros",
     }
 
-    _COD_ESPECIE = {
+    COD_ESPECIE = {
         "1": "Domicílio particular",
         "2": "Domicílio coletivo",
         "3": "Estabelecimento agropecuário",
@@ -966,14 +964,14 @@ def _zzz_format_custom_cnefe(item: dict) -> dict:
         "8": "Estabelecimento religioso",
     }
 
-    _COD_INDICADOR_ESTAB_ENDERECO = {
+    COD_INDICADOR_ESTAB_ENDERECO = {
         "1": "Único",
         "2": "Múltiplo, com até 10 estabelecimentos no endereço",
         "3": "Múltiplo, com mais de 10 estabelecimentos no endereço",
         "4": "Múltiplo, com quantidade de estabelecimentos desconhecida no endereço",
     }
 
-    _NV_GEO_COORD = {
+    NV_GEO_COORD = {
         "1": "Endereço - coordenada original do Censo 2022",
         "2": "Endereço - coordenada modificada (apartamentos em um mesmo número no logradouro)",
         "3": "Endereço - coordenada estimada (endereços originalmente sem coordenadas ou coordenadas inválidas)",
@@ -982,146 +980,271 @@ def _zzz_format_custom_cnefe(item: dict) -> dict:
         "6": "Setor censitário",
     }
 
-    # Versao baixada em 2024-05-29 tem erro em relacao ao dicionario
-    # Aqui renomeia o campo que faltou um "E"
-    if "COD_TIPO_ESPECI" in result:
-        result["COD_TIPO_ESPECIE"] = result["COD_TIPO_ESPECI"]
-        del result["COD_TIPO_ESPECI"]
+    def item(self, item: dict, metadata: int = 1) -> dict:
+        """Preprocessor for IBGE CNEFE
 
-    if "CEP" not in result or "NOM_SEGLOGR" not in result:
-        raise KeyError("Bad file input. Is this CNEFE-like CSV?")
+        @see https://ftp.ibge.gov.br/Cadastro_Nacional_de_Enderecos_para_Fins_Estatisticos/Censo_Demografico_2022/Arquivos_CNEFE/Dicionario_CNEFE_Censo_2022.xls
+        Args:
+            item (dict): _description_
 
-    # if "CEP" in result:
-    result["addr:postcode"] = _zzz_format_cep(result["CEP"])
-    del result["CEP"]
+        Returns:
+            dict: _description_
+        """
+        result = item
+        # addr_raw = item[source_column]
 
-    logradouro = []
-    logradouro.append(result["NOM_TIPO_SEGLOGR"])
-    if result["NOM_TITULO_SEGLOGR"]:
-        logradouro.append(result["NOM_TITULO_SEGLOGR"])
+        # Versao baixada em 2024-05-29 tem erro em relacao ao dicionario
+        # Aqui renomeia o campo que faltou um "E"
+        if "COD_TIPO_ESPECI" in result:
+            result["COD_TIPO_ESPECIE"] = result["COD_TIPO_ESPECI"]
+            del result["COD_TIPO_ESPECI"]
 
-    logradouro.append(result["NOM_SEGLOGR"])
+        if "CEP" not in result or "NOM_SEGLOGR" not in result:
+            raise KeyError("Bad file input. Is this CNEFE-like CSV?")
 
-    if len(result["DSC_ESTABELECIMENTO"]) > 0:
-        result["name"] = result["DSC_ESTABELECIMENTO"]
+        # if "CEP" in result:
+        result["addr:postcode"] = _zzz_format_cep(result["CEP"])
+        del result["CEP"]
 
-    if result["NOM_TIPO_SEGLOGR"] == "PRACA":
-        result["addr:place"] = _zzz_format_name_street_br(" ".join(logradouro))
-    else:
-        result["addr:street"] = _zzz_format_name_street_br(" ".join(logradouro))
+        logradouro = []
+        logradouro.append(result["NOM_TIPO_SEGLOGR"])
+        if result["NOM_TITULO_SEGLOGR"]:
+            logradouro.append(result["NOM_TITULO_SEGLOGR"])
 
-    if len(result["NUM_ENDERECO"]) > 0:
-        # if result["NUM_ENDERECO"] == "S/N":
-        if result["DSC_MODIFICADOR"] == "SN":
-            result["addr:nohousenumber"] = "yes"
+        logradouro.append(result["NOM_SEGLOGR"])
+
+        if len(result["DSC_ESTABELECIMENTO"]) > 0:
+            result["name"] = result["DSC_ESTABELECIMENTO"]
+
+        if result["NOM_TIPO_SEGLOGR"] == "PRACA":
+            result["addr:place"] = _zzz_format_name_street_br(" ".join(logradouro))
         else:
-            result["addr:housenumber"] = result["NUM_ENDERECO"]
+            result["addr:street"] = _zzz_format_name_street_br(" ".join(logradouro))
 
-    addr_extras = []
-    if len(result["DSC_LOCALIDADE"]) > 0:
-        addr_extras.append("localidade=" + result["DSC_LOCALIDADE"])
+        if len(result["NUM_ENDERECO"]) > 0:
+            # if result["NUM_ENDERECO"] == "S/N":
+            if result["DSC_MODIFICADOR"] == "SN":
+                result["addr:nohousenumber"] = "yes"
+            else:
+                result["addr:housenumber"] = result["NUM_ENDERECO"]
 
-    if len(result["DSC_MODIFICADOR"]) > 0:
-        addr_extras.append(result["DSC_MODIFICADOR"] + "=" + result["DSC_MODIFICADOR"])
+        # @TODO
+        # VAL_COMP_ELEM1=CASA
+        # VAL_COMP_ELEM1=1
+        # CASA=1
+        # addr:unit=Casa 1
 
-    if len(result["VAL_COMP_ELEM1"]) > 0:
-        addr_extras.append(result["NOM_COMP_ELEM1"] + "=" + result["VAL_COMP_ELEM1"])
+        # result["source"] = "CNEFE 2022"
+        result["source:addr"] = "CNEFE 2022"
 
-    if len(result["VAL_COMP_ELEM2"]) > 0:
-        addr_extras.append(result["NOM_COMP_ELEM2"] + "=" + result["VAL_COMP_ELEM2"])
+        addr_extras = []
+        if len(result["DSC_LOCALIDADE"]) > 0:
+            addr_extras.append("localidade=" + result["DSC_LOCALIDADE"])
 
-    if len(result["VAL_COMP_ELEM3"]) > 0:
-        addr_extras.append(result["NOM_COMP_ELEM3"] + "=" + result["VAL_COMP_ELEM3"])
+        if len(result["DSC_MODIFICADOR"]) > 0:
+            addr_extras.append(
+                result["DSC_MODIFICADOR"] + "=" + result["DSC_MODIFICADOR"]
+            )
 
-    if len(result["VAL_COMP_ELEM4"]) > 0:
-        addr_extras.append(result["NOM_COMP_ELEM4"] + "=" + result["VAL_COMP_ELEM4"])
+        if len(result["VAL_COMP_ELEM1"]) > 0:
+            addr_extras.append(
+                result["NOM_COMP_ELEM1"] + "=" + result["VAL_COMP_ELEM1"]
+            )
 
-    if len(result["VAL_COMP_ELEM5"]) > 0:
-        addr_extras.append(result["NOM_COMP_ELEM5"] + "=" + result["VAL_COMP_ELEM5"])
+        if len(result["VAL_COMP_ELEM2"]) > 0:
+            addr_extras.append(
+                result["NOM_COMP_ELEM2"] + "=" + result["VAL_COMP_ELEM2"]
+            )
 
-    result["__meta_addr"] = ";".join(addr_extras)
+        if len(result["VAL_COMP_ELEM3"]) > 0:
+            addr_extras.append(
+                result["NOM_COMP_ELEM3"] + "=" + result["VAL_COMP_ELEM3"]
+            )
 
-    if result["COD_INDICADOR_FINALIDADE_CONST"] in _COD_INDICADOR_FINALIDADE_CONST:
-        result["__meta_finalidade"] = _COD_INDICADOR_FINALIDADE_CONST[
-            result["COD_INDICADOR_FINALIDADE_CONST"]
-        ]
+        if len(result["VAL_COMP_ELEM4"]) > 0:
+            addr_extras.append(
+                result["NOM_COMP_ELEM4"] + "=" + result["VAL_COMP_ELEM4"]
+            )
 
-    if result["COD_TIPO_ESPECIE"] in _COD_TIPO_ESPECIE:
-        result["__meta_tipo_especie"] = _COD_TIPO_ESPECIE[result["COD_TIPO_ESPECIE"]]
+        if len(result["VAL_COMP_ELEM5"]) > 0:
+            addr_extras.append(
+                result["NOM_COMP_ELEM5"] + "=" + result["VAL_COMP_ELEM5"]
+            )
 
-    if result["COD_INDICADOR_ESTAB_ENDERECO"] in _COD_INDICADOR_ESTAB_ENDERECO:
-        result["__meta_estab_endereco"] = _COD_INDICADOR_ESTAB_ENDERECO[
-            result["COD_INDICADOR_ESTAB_ENDERECO"]
-        ]
+        result["__meta_addr"] = ";".join(addr_extras)
 
-    if result["COD_ESPECIE"] in _COD_ESPECIE:
-        result["__meta_especie"] = _COD_ESPECIE[result["COD_ESPECIE"]]
+        if metadata >= 1:
+            if (
+                result["COD_INDICADOR_FINALIDADE_CONST"]
+                in self.COD_INDICADOR_FINALIDADE_CONST
+            ):
+                result["__meta_finalidade"] = self.COD_INDICADOR_FINALIDADE_CONST[
+                    result["COD_INDICADOR_FINALIDADE_CONST"]
+                ]
 
-    if result["NV_GEO_COORD"] in _NV_GEO_COORD:
-        result["__meta_geo_coord"] = _NV_GEO_COORD[result["NV_GEO_COORD"]]
+            if result["COD_TIPO_ESPECIE"] in self.COD_TIPO_ESPECIE:
+                result["__meta_tipo_especie"] = self.COD_TIPO_ESPECIE[
+                    result["COD_TIPO_ESPECIE"]
+                ]
 
-    # logradouro_arr = []
-    # parts = addr_raw.split(" ")
-    # while len(parts) > 0:
-    #     token = parts.pop(0)
-    #     # @TODO do the regex
-    #     if len(token) == 9 and token[5] == "-":
-    #         result["addr:postcode"] = token
-    #         result["addr:city"] = parts.pop(0)
-    #         break
+            if (
+                result["COD_INDICADOR_ESTAB_ENDERECO"]
+                in self.COD_INDICADOR_ESTAB_ENDERECO
+            ):
+                result["__meta_estab_endereco"] = self.COD_INDICADOR_ESTAB_ENDERECO[
+                    result["COD_INDICADOR_ESTAB_ENDERECO"]
+                ]
 
-    #     logradouro_arr.append(token)
+            if result["COD_ESPECIE"] in self.COD_ESPECIE:
+                result["__meta_especie"] = self.COD_ESPECIE[result["COD_ESPECIE"]]
 
-    # if addr_raw.find(", ") > -1:
-    #     parts2 = addr_raw.split(", ")
-    #     parts2b = parts2[1].split(" ")
-    #     if parts2b[0].isnumeric():
-    #         result["addr:street"] = _zzz_format_name_street_br(parts2[0])
-    #         result["addr:housenumber"] = parts2b[0]
+            if result["NV_GEO_COORD"] in self.NV_GEO_COORD:
+                result["__meta_geo_coord"] = self.NV_GEO_COORD[result["NV_GEO_COORD"]]
 
-    # # result["__addr:street"] = _zzz_format_name_street_br(
-    # #     " ".join(logradouro_arr).strip(".")
-    # # )
-    # # result["__addr:street"] = result["__addr:street"]p('.')
+        if metadata == 0:
 
-    # delete other non-used fields
+            # _arr = [
+            #     self.COD_INDICADOR_FINALIDADE_CONST[
+            #         result["COD_INDICADOR_FINALIDADE_CONST"]
+            #     ],
+            #     self.COD_TIPO_ESPECIE[result["COD_TIPO_ESPECIE"]],
+            #     self.COD_INDICADOR_ESTAB_ENDERECO[
+            #         result["COD_INDICADOR_ESTAB_ENDERECO"]
+            #     ],
+            #     self.COD_ESPECIE[result["COD_ESPECIE"]],
+            #     self.NV_GEO_COORD[result["NV_GEO_COORD"]],
+            # ]
 
-    del result["NOM_TIPO_SEGLOGR"]
-    del result["NOM_TITULO_SEGLOGR"]
-    del result["NOM_SEGLOGR"]
+            _arr = []
 
-    del result["DSC_ESTABELECIMENTO"]
+            if (
+                result["COD_INDICADOR_FINALIDADE_CONST"]
+                in self.COD_INDICADOR_FINALIDADE_CONST
+            ):
+                _arr.append(result["COD_INDICADOR_FINALIDADE_CONST"])
+            else:
+                _arr.append("_")
 
-    del result["COD_UNICO_ENDERECO"]
-    del result["COD_UF"]
-    del result["COD_MUNICIPIO"]
-    del result["COD_DISTRITO"]
-    del result["COD_SUBDISTRITO"]
-    del result["COD_SETOR"]
-    del result["NUM_QUADRA"]
-    del result["NUM_FACE"]
-    del result["DSC_LOCALIDADE"]
-    del result["NUM_ENDERECO"]
-    del result["DSC_MODIFICADOR"]
-    del result["NOM_COMP_ELEM1"]
-    del result["VAL_COMP_ELEM1"]
-    del result["NOM_COMP_ELEM2"]
-    del result["VAL_COMP_ELEM2"]
-    del result["NOM_COMP_ELEM3"]
-    del result["VAL_COMP_ELEM3"]
-    del result["NOM_COMP_ELEM4"]
-    del result["VAL_COMP_ELEM4"]
-    del result["NOM_COMP_ELEM5"]
-    del result["VAL_COMP_ELEM5"]
-    del result["COD_ESPECIE"]
-    del result["NV_GEO_COORD"]
-    del result["COD_INDICADOR_ESTAB_ENDERECO"]
-    del result["COD_TIPO_ESPECIE"]
-    del result["COD_INDICADOR_FINALIDADE_CONST"]
-    # del result["COD_UNICO_ENDERECO"]
-    # del result["COD_UNICO_ENDERECO"]
+            if result["COD_TIPO_ESPECIE"] in self.COD_TIPO_ESPECIE:
+                _arr.append(result["COD_TIPO_ESPECIE"])
+            else:
+                _arr.append("_")
 
-    return result
+            if (
+                result["COD_INDICADOR_ESTAB_ENDERECO"]
+                in self.COD_INDICADOR_ESTAB_ENDERECO
+            ):
+                _arr.append(result["COD_INDICADOR_ESTAB_ENDERECO"])
+            else:
+                _arr.append("_")
+
+            if result["COD_ESPECIE"] in self.COD_ESPECIE:
+                _arr.append(result["COD_ESPECIE"])
+            else:
+                _arr.append("_")
+
+            if result["NV_GEO_COORD"] in self.NV_GEO_COORD:
+                _arr.append(result["NV_GEO_COORD"])
+
+            else:
+                _arr.append("_")
+
+            result["__meta_codes"] = "-".join(_arr)
+
+            # if (
+            #     result["COD_INDICADOR_FINALIDADE_CONST"]
+            #     in self.COD_INDICADOR_FINALIDADE_CONST
+            # ):
+            #     result["__meta_finalidade"] = self.COD_INDICADOR_FINALIDADE_CONST[
+            #         result["COD_INDICADOR_FINALIDADE_CONST"]
+            #     ]
+
+            # if result["COD_TIPO_ESPECIE"] in self.COD_TIPO_ESPECIE:
+            #     result["__meta_tipo_especie"] = self.COD_TIPO_ESPECIE[
+            #         result["COD_TIPO_ESPECIE"]
+            #     ]
+
+            # if result["COD_INDICADOR_ESTAB_ENDERECO"] in self.COD_INDICADOR_ESTAB_ENDERECO:
+            #     result["__meta_estab_endereco"] = self.COD_INDICADOR_ESTAB_ENDERECO[
+            #         result["COD_INDICADOR_ESTAB_ENDERECO"]
+            #     ]
+
+            # if result["COD_ESPECIE"] in self.COD_ESPECIE:
+            #     result["__meta_especie"] = self.COD_ESPECIE[result["COD_ESPECIE"]]
+
+            # if result["NV_GEO_COORD"] in self.NV_GEO_COORD:
+            #     result["__meta_geo_coord"] = self.NV_GEO_COORD[result["NV_GEO_COORD"]]
+
+        # logradouro_arr = []
+        # parts = addr_raw.split(" ")
+        # while len(parts) > 0:
+        #     token = parts.pop(0)
+        #     # @TODO do the regex
+        #     if len(token) == 9 and token[5] == "-":
+        #         result["addr:postcode"] = token
+        #         result["addr:city"] = parts.pop(0)
+        #         break
+
+        #     logradouro_arr.append(token)
+
+        # if addr_raw.find(", ") > -1:
+        #     parts2 = addr_raw.split(", ")
+        #     parts2b = parts2[1].split(" ")
+        #     if parts2b[0].isnumeric():
+        #         result["addr:street"] = _zzz_format_name_street_br(parts2[0])
+        #         result["addr:housenumber"] = parts2b[0]
+
+        # # result["__addr:street"] = _zzz_format_name_street_br(
+        # #     " ".join(logradouro_arr).strip(".")
+        # # )
+        # # result["__addr:street"] = result["__addr:street"]p('.')
+
+        # delete other non-used fields
+
+        if metadata == -999:
+            del result["addr:postcode"]
+            if "addr:street" in result:
+                del result["addr:street"]
+            del result["source:addr"]
+            del result["__meta_addr"]
+
+        del result["NOM_TIPO_SEGLOGR"]
+        del result["NOM_TITULO_SEGLOGR"]
+        del result["NOM_SEGLOGR"]
+
+        del result["DSC_ESTABELECIMENTO"]
+
+        del result["COD_UNICO_ENDERECO"]
+        del result["COD_UF"]
+        del result["COD_MUNICIPIO"]
+        del result["COD_DISTRITO"]
+        del result["COD_SUBDISTRITO"]
+        del result["COD_SETOR"]
+        del result["NUM_QUADRA"]
+        del result["NUM_FACE"]
+        del result["DSC_LOCALIDADE"]
+        del result["NUM_ENDERECO"]
+        del result["DSC_MODIFICADOR"]
+        del result["NOM_COMP_ELEM1"]
+        del result["VAL_COMP_ELEM1"]
+        del result["NOM_COMP_ELEM2"]
+        del result["VAL_COMP_ELEM2"]
+        del result["NOM_COMP_ELEM3"]
+        del result["VAL_COMP_ELEM3"]
+        del result["NOM_COMP_ELEM4"]
+        del result["VAL_COMP_ELEM4"]
+        del result["NOM_COMP_ELEM5"]
+        del result["VAL_COMP_ELEM5"]
+        del result["COD_ESPECIE"]
+        del result["NV_GEO_COORD"]
+        del result["COD_INDICADOR_ESTAB_ENDERECO"]
+        del result["COD_TIPO_ESPECIE"]
+        del result["COD_INDICADOR_FINALIDADE_CONST"]
+        del result["COD_INDICADOR_CONST_ENDERECO"]
+        # del result["COD_UNICO_ENDERECO"]
+        # del result["COD_UNICO_ENDERECO"]
+
+        return result
 
 
 def exec_from_console_scripts():
