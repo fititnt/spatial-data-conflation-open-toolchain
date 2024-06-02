@@ -364,12 +364,20 @@ class Cli:
             default=None,
         )
 
-        # @TODO tem bug no prepend repetindo keys 2024-06-01
         cpostprocess_group.add_argument(
             "--output-unknow-action",
             help="What to do with unknow fields. Requires --output-know-fields",
             dest="output_unknow_action",
             choices=["_prepend", "discard"],
+            default=None,
+        )
+
+        cpostprocess_group.add_argument(
+            "--output-delete-fields",
+            help="Fields that (if exist) always delete from output. Split by |",
+            dest="output_delete_fields",
+            nargs="?",
+            type=lambda x: x.split("|"),
             default=None,
         )
 
@@ -534,6 +542,7 @@ class Cli:
                     item,
                     pyargs.output_fields_know,
                     pyargs.output_unknow_action,
+                    pyargs.output_delete_fields,
                 )
 
                 if pyargs.output_keys_sort:
@@ -834,21 +843,32 @@ def row_item_values(
     return row
 
 
-def row_item_post_processing(row: dict, know_keys: list = None, action: str = None):
+def row_item_post_processing(
+    row: dict, know_keys: list = None, action: str = None, delete_keys: list = None
+):
+    if delete_keys is not None and len(delete_keys) > 0:
+        for key in delete_keys:
+            if key in row["properties"]:
+                del row["properties"][key]
+
+    if know_keys is None:
+        return row
 
     if len(know_keys) > 0 and action is not None:
         # old_properties = row["properties"]
         # del row["properties"]
         # row["properties"] = {}
         new_props = {}
+        # raise ValueError([row["properties"].keys(), know_keys])
+        # print(know_keys)
 
         # for key, value in old_properties.items():
         for key, value in row["properties"].items():
 
             if key in know_keys:
                 new_props[key] = value
+                continue
 
-            # @TODO tem bug no prepend repetindo keys 2024-06-01
             elif action == "_prepend":
                 new_props["_" + key] = value
 
@@ -862,7 +882,6 @@ def row_item_post_processing(row: dict, know_keys: list = None, action: str = No
                 )
 
         row["properties"] = new_props
-
 
     return row
 
