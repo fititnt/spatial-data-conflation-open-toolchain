@@ -349,6 +349,38 @@ class Cli:
             default=None,
         )
 
+        cpostprocess_group = parser.add_argument_group(
+            "Post Processing (mostly how to deal with unknow fields)"
+        )
+
+        cpostprocess_group.add_argument(
+            "--output-know-fields",
+            help="List of of know fields (ones no further process is need)."
+            "Necessary to allow inform what to do with unknow fields. "
+            "Divide with |. Example: 'name|addr:housenumber:addr:street'",
+            dest="output_fields_know",
+            nargs="?",
+            type=lambda x: x.split("|"),
+            default=None,
+        )
+
+        # @TODO tem bug no prepend repetindo keys 2024-06-01
+        cpostprocess_group.add_argument(
+            "--output-unknow-action",
+            help="What to do with unknow fields. Requires --output-know-fields",
+            dest="output_unknow_action",
+            choices=["_prepend", "discard"],
+            default=None,
+        )
+
+        cpostprocess_group.add_argument(
+            "--output-sort-keys",
+            help="Sort keys",
+            dest="output_keys_sort",
+            action="store_true",
+            default=None,
+        )
+
         custom_group = parser.add_argument_group("Other")
 
         custom_group.add_argument(
@@ -492,10 +524,22 @@ class Cli:
                     contain_and_in=_contain_and_in,
                     ignore_warnings=pyargs.ignore_warnings,
                 )
+
                 if not item:
                     continue
 
-                jsonstr = json.dumps(item, ensure_ascii=False)
+                item2 = row_item_post_processing(
+                    # formated_row,
+                    # row_v2,
+                    item,
+                    pyargs.output_fields_know,
+                    pyargs.output_unknow_action,
+                )
+
+                if pyargs.output_keys_sort:
+                    jsonstr = json.dumps(item2, ensure_ascii=False, sort_keys=True)
+                else:
+                    jsonstr = json.dumps(item2, ensure_ascii=False)
 
                 # https://www.rfc-editor.org/rfc/rfc8142
                 if pyargs.outfmt == "GeoJSONSeq":
@@ -790,6 +834,39 @@ def row_item_values(
     return row
 
 
+def row_item_post_processing(row: dict, know_keys: list = None, action: str = None):
+
+    if len(know_keys) > 0 and action is not None:
+        # old_properties = row["properties"]
+        # del row["properties"]
+        # row["properties"] = {}
+        new_props = {}
+
+        # for key, value in old_properties.items():
+        for key, value in row["properties"].items():
+
+            if key in know_keys:
+                new_props[key] = value
+
+            # @TODO tem bug no prepend repetindo keys 2024-06-01
+            elif action == "_prepend":
+                new_props["_" + key] = value
+
+            elif action == "discard":
+                continue
+
+            else:
+                raise ValueError(
+                    "row_item_post_processing expect params: discard, _prepend, but found"
+                    + str(action)
+                )
+
+        row["properties"] = new_props
+
+
+    return row
+
+
 def _zzz_format_cep(value: str):
     if not value:
         return False
@@ -911,7 +988,8 @@ def _zzz_format_custom_inep(item: dict, source_column: str = "Endereço") -> dic
         # @TODO do the regex
         if len(token) == 9 and token[5] == "-":
             result["addr:postcode"] = token
-            result["addr:city"] = parts.pop(0)
+            if len(parts) > 0:
+                result["addr:city"] = parts.pop(0)
             break
 
         logradouro_arr.append(token)
