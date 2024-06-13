@@ -38,7 +38,7 @@ import string
 from gisconflation.util import parse_argument_values
 
 
-__VERSION__ = "1.1.0"
+__VERSION__ = "1.2.0"
 PROGRAM = "csv2geojson"
 DESCRIPTION = """
 ------------------------------------------------------------------------------
@@ -74,6 +74,10 @@ STDIN . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     head data/tmp/DATASUS-tbEstabelecimento.csv | \
 {0} --lat=NU_LATITUDE --lon=NU_LONGITUDE --delimiter=';' --encoding='latin-1' \
 --ignore-warnings - | jq
+
+GeoJSONL . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+    echo "See https://stevage.github.io/ndgeojson/"
+    echo "same as GeoJSONSeq"
 
 GeoJSONSeq . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     head data/tmp/DATASUS-tbEstabelecimento.csv | \
@@ -136,17 +140,28 @@ class Cli:
 
         parser.add_argument(
             "--lat",
-            help="the name of the latitude column",
+            help="the name of the latitude column. Required unless --lat-lon-empty is used",
             dest="lat",
-            required=True,
+            # required=True,
+            default=None,
             nargs="?",
         )
 
         parser.add_argument(
             "--lon",
-            help="the name of the longitude column",
+            help="the name of the longitude column. Required unless --lat-lon-empty is used",
             dest="lon",
-            required=True,
+            # required=True,
+            default=None,
+            nargs="?",
+        )
+
+        parser.add_argument(
+            "--lat-lon-empty",
+            help="Disable copy a latitude langitude and create am Point on 0, 0",
+            dest="no_latlon",
+            # required=True,
+            const=True,
             nargs="?",
         )
 
@@ -225,7 +240,8 @@ class Cli:
 
         parser.add_argument(
             "--output-type",
-            help="Change the default output type",
+            help="Change the default output type."
+            "See https://www.rfc-editor.org/rfc/rfc8142 and https://stevage.github.io/ndgeojson/",
             dest="outfmt",
             default="GeoJSON",
             # geojsom
@@ -382,6 +398,16 @@ class Cli:
         )
 
         cpostprocess_group.add_argument(
+            "--output-nohousenumber-values",
+            help="Which values on addr:housenumber replace it by nohousenumber=yes. Split by | ."
+            "Examples: 'N/A|n/a|na|S/N|s/n|sn'",
+            dest="output_nohousenumber_values",
+            nargs="?",
+            type=lambda x: x.split("|"),
+            default=None,
+        )
+
+        cpostprocess_group.add_argument(
             "--output-sort-keys",
             help="Sort keys",
             dest="output_keys_sort",
@@ -420,6 +446,12 @@ class Cli:
         #             ))
 
         # raise ValueError(pyargs)
+
+        if pyargs.no_latlon is None and (not pyargs.lat or not pyargs.lon):
+            print(
+                "no --lat / --lon specified or --lat-lon-empty. Aborting.", sys.stderr
+            )
+            sys.exit(1)
 
         _contain_or = {}
         _contain_and = {}
@@ -527,6 +559,7 @@ class Cli:
                     row_v3,
                     pyargs.lat,
                     pyargs.lon,
+                    pyargs.no_latlon,
                     contain_or=_contain_or,
                     contain_and=_contain_and,
                     contain_and_in=_contain_and_in,
@@ -543,6 +576,7 @@ class Cli:
                     pyargs.output_fields_know,
                     pyargs.output_unknow_action,
                     pyargs.output_delete_fields,
+                    pyargs.output_nohousenumber_values,
                 )
 
                 if pyargs.output_keys_sort:
@@ -551,7 +585,7 @@ class Cli:
                     jsonstr = json.dumps(item2, ensure_ascii=False)
 
                 # https://www.rfc-editor.org/rfc/rfc8142
-                if pyargs.outfmt == "GeoJSONSeq":
+                if pyargs.outfmt == "GeoJSONSeq" or pyargs.outfmt == "GeoJSONL":
                     print(f"\x1e{jsonstr}\n", sep="", end="")
                     continue
 
@@ -567,15 +601,22 @@ class Cli:
 
 def geojson_item(
     row,
-    lat,
-    lon,
+    lat: str = None,
+    lon: str = None,
+    no_latlon: bool = False,
     contain_or: list = None,
     contain_and: list = None,
     contain_and_in: list = None,
     ignore_warnings: bool = False,
 ):
-    _lat = row[lat] if lat in row and len(row[lat].strip()) else False
-    _lon = row[lon] if lon in row and len(row[lon].strip()) else False
+    # print(lat, lon, no_latlon, sys.stderr)
+    # sys.exit(1)
+    if no_latlon is True:
+        _lat = "0"
+        _lon = "0"
+    else:
+        _lat = row[lat] if lat in row and len(row[lat].strip()) else False
+        _lon = row[lon] if lon in row and len(row[lon].strip()) else False
 
     if not geojson_item_contain(
         row,
@@ -585,7 +626,7 @@ def geojson_item(
     ):
         return False
 
-    if not _lat or not _lon:
+    if _lat is False or _lon is False:
         if not ignore_warnings:
             print(f"WARNING LAT/LON NOT FOUND [{row}]", file=sys.stderr)
 
@@ -844,12 +885,25 @@ def row_item_values(
 
 
 def row_item_post_processing(
-    row: dict, know_keys: list = None, action: str = None, delete_keys: list = None
+    row: dict,
+    know_keys: list = None,
+    action: str = None,
+    delete_keys: list = None,
+    nohousenumber: list = None,
 ):
     if delete_keys is not None and len(delete_keys) > 0:
         for key in delete_keys:
             if key in row["properties"]:
                 del row["properties"][key]
+
+        if (
+            nohousenumber is not None
+            and len(nohousenumber) > 0
+            and "addr:housenumber" in row["properties"]
+        ):
+            if row["properties"]["addr:housenumber"] in nohousenumber:
+                row["properties"]["nohousenumber"] = "yes"
+                del row["properties"]["addr:housenumber"]
 
     if know_keys is None:
         return row
@@ -948,8 +1002,16 @@ def _zzz_format_phone_br(value: str):
         return value
 
     # @TODO deal with more than one number
+    value_clean = re.sub("[^0-9]+", "", value)
+    if value_clean.startswith("0"):
+        return False
 
-    if value.startswith("(") and value.find(")") > -1:
+    if (
+        (value.startswith("(") and value.find(")") > -1)
+        or len(value_clean) == 12
+        or len(value_clean) == 11
+        or len(value_clean) == 11
+    ):
         _num_com_ddd = "".join(filter(str.isdigit, value))
 
         _regiao = _num_com_ddd[0:2]
@@ -958,6 +1020,9 @@ def _zzz_format_phone_br(value: str):
         _num_loc_p1 = _num_loc.replace(_num_loc_p2, "")
         # return "+55 " + _regiao + ' ' + _num_com_ddd[2:]
         return "+55 " + _regiao + " " + _num_loc_p1 + " " + _num_loc_p2
+
+    # 12c 85 99920 2078
+    # 11c 55 3512 6070
 
     # if value.isnumeric():
     #     if len(value) == 8:
@@ -1121,7 +1186,7 @@ class CustomProcessorCnefe(CustomPreprocessorBase):
         if len(result["NUM_ENDERECO"]) > 0:
             # if result["NUM_ENDERECO"] == "S/N":
             if result["DSC_MODIFICADOR"] == "SN":
-                result["addr:nohousenumber"] = "yes"
+                result["nohousenumber"] = "yes"
             else:
                 result["addr:housenumber"] = result["NUM_ENDERECO"]
 

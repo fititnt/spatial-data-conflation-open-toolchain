@@ -1,5 +1,6 @@
 ```
-usage: csv2geojson [-h] --lat [LAT] --lon [LON]
+usage: csv2geojson [-h] [--lat [LAT]] [--lon [LON]]
+                   [--lat-lon-empty [NO_LATLON]]
                    [--filter-contain [FILTER_CONTAIN]]
                    [--filter-contain-regex [FILTER_CONTAIN_REGEX]]
                    [--contain-or [CONTAIN_OR]] [--contain-and [CONTAIN_AND]]
@@ -14,7 +15,13 @@ usage: csv2geojson [-h] --lat [LAT] --lon [LON]
                    [--value-phone-br [VALUE_PHONE_BR]]
                    [--value-name-place-br [VALUE_NAME_PLACE_BR]]
                    [--value-name-street-br [VALUE_NAME_STREET_BR]]
+                   [--output-know-fields [OUTPUT_FIELDS_KNOW]]
+                   [--output-unknow-action {_prepend,discard}]
+                   [--output-delete-fields [OUTPUT_DELETE_FIELDS]]
+                   [--output-nohousenumber-values [OUTPUT_NOHOUSENUMBER_VALUES]]
+                   [--output-sort-keys]
                    [--preprocessor-item-custom-inep [PREPITEM_CUSTOM_INEP]]
+                   [--preprocessor-complex-cnefe [PREP_COMPLEX_CNEFE]]
                    input
 
 ------------------------------------------------------------------------------
@@ -29,6 +36,9 @@ options:
   -h, --help            show this help message and exit
   --lat [LAT]           the name of the latitude column
   --lon [LON]           the name of the longitude column
+  --lat-lon-empty [NO_LATLON]
+                        Disable copy a latitude langitude and create am Point
+                        on 0, 0
   --filter-contain [FILTER_CONTAIN]
                         Filter one or more fields for contain a stringUse
                         '|||' to divide the field and the string. Accept
@@ -57,7 +67,9 @@ options:
   --encoding [ENCODING]
                         the type of delimiter
   --output-type [{GeoJSON,GeoJSONSeq}]
-                        Change the default output type
+                        Change the default output type.See https://www.rfc-
+                        editor.org/rfc/rfc8142 and
+                        https://stevage.github.io/ndgeojson/
   --ignore-warnings     Ignore some errors (such as empty latitude/longitude
                         values)
 
@@ -99,9 +111,30 @@ Convert/preprocess data from input, including generate new fields:
                         One or more columsn to format as name of street
                         (Locale BR, 'logradouro')
 
+Post Processing (mostly how to deal with unknow fields):
+  --output-know-fields [OUTPUT_FIELDS_KNOW]
+                        List of of know fields (ones no further process is
+                        need).Necessary to allow inform what to do with unknow
+                        fields. Divide with |. Example:
+                        'name|addr:housenumber:addr:street'
+  --output-unknow-action {_prepend,discard}
+                        What to do with unknow fields. Requires --output-know-
+                        fields
+  --output-delete-fields [OUTPUT_DELETE_FIELDS]
+                        Fields that (if exist) always delete from output.
+                        Split by |
+  --output-nohousenumber-values [OUTPUT_NOHOUSENUMBER_VALUES]
+                        Which values on addr:housenumber replace it by
+                        nohousenumber=yes. Split by | .Examples:
+                        'N/A|n/a|na|S/N|s/n|sn'
+  --output-sort-keys    Sort keys
+
 Other:
   --preprocessor-item-custom-inep [PREPITEM_CUSTOM_INEP]
                         Custom feature not yet documented
+  --preprocessor-complex-cnefe [PREP_COMPLEX_CNEFE]
+                        Preprocessor for IBGE CNEFE 20221: full metadata; 0:
+                        code-only; -1: no codes; -999: debug minimal
 
 ------------------------------------------------------------------------------
                             EXEMPLŌRUM GRATIĀ
@@ -116,6 +149,10 @@ STDIN . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
 (With jq to format output)
     head data/tmp/DATASUS-tbEstabelecimento.csv | csv2geojson --lat=NU_LATITUDE --lon=NU_LONGITUDE --delimiter=';' --encoding='latin-1' --ignore-warnings - | jq
+
+GeoJSONL . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+    echo "See https://stevage.github.io/ndgeojson/"
+    echo "same as GeoJSONSeq"
 
 GeoJSONSeq . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
     head data/tmp/DATASUS-tbEstabelecimento.csv | csv2geojson --lat=NU_LATITUDE --lon=NU_LONGITUDE --delimiter=';' --encoding='latin-1' --output-type=GeoJSONSeq --ignore-warnings -
