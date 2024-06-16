@@ -586,7 +586,8 @@ class Cli:
 
                 # https://www.rfc-editor.org/rfc/rfc8142
                 if pyargs.outfmt == "GeoJSONSeq" or pyargs.outfmt == "GeoJSONL":
-                    print(f"\x1e{jsonstr}\n", sep="", end="")
+                    # print(f"\x1e{jsonstr}\n", sep="", end="")
+                    print(f"{jsonstr}\x1e\n", sep="", end="")
                     continue
 
                 print(f"{prepend} {jsonstr}")
