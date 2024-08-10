@@ -109,13 +109,43 @@ class Cli:
         # parser.add_argument("geodataset_b", help="GeoJSON dataset 'B'")
 
         parser.add_argument(
-            "--format-output",
-            help="Path to output file",
-            dest="format_output",
-            default="auto",
+            "--input-type",
+            help="Change the default input type."
+            "See https://www.rfc-editor.org/rfc/rfc8142 and https://stevage.github.io/ndgeojson/",
+            dest="infmt",
+            default="GeoJSON",
+            # geojsom
+            # geojsonl
+            choices=[
+                "GeoJSON",
+                "GeoJSONSeq",
+            ],
             required=False,
-            choices=["auto", "geojson", "geojsonseq"],
             nargs="?",
+        )
+
+        parser.add_argument(
+            "--output-type",
+            help="Change the default output type."
+            "See https://www.rfc-editor.org/rfc/rfc8142 and https://stevage.github.io/ndgeojson/",
+            dest="outfmt",
+            default="GeoJSON",
+            # geojsom
+            # geojsonl
+            choices=[
+                "GeoJSON",
+                "GeoJSONSeq",
+            ],
+            required=False,
+            nargs="?",
+        )
+
+        parser.add_argument(
+            "--output-sort-keys",
+            help="Sort keys",
+            dest="output_keys_sort",
+            action="store_true",
+            default=None,
         )
 
         edit = parser.add_argument_group("Change properties from each item")
@@ -185,7 +215,15 @@ class Cli:
             normalize_prop=normalize_prop,
             skip_invalid_geometry=skip_invalid_geometry,
         )
-        gedit = GeoJSONFileEditor(pyargs.input, gitem)
+
+        if pyargs.infmt == "GeoJSONSeq":
+            raise NotImplementedError(
+                "implement read from GeoJSONSeq (GeoJSON -> GeoJSONSeq works)"
+            )
+
+        gedit = GeoJSONFileEditor(
+            pyargs.input, gitem, pyargs.infmt, pyargs.outfmt, pyargs.output_keys_sort
+        )
         gedit.output()
 
         # geodiff.debug()
@@ -201,9 +239,27 @@ class GeoJSONFileEditor:
     @TODO implement read line-by-line large files (in special GeoJSONSeq)
     """
 
-    def __init__(self, input_ptr: str, gitem: Type["GeoJSONItemEditor"]) -> None:
+    def __init__(
+        self,
+        input_ptr: str,
+        gitem: Type["GeoJSONItemEditor"],
+        infmt: str = "GeoJSON",
+        outfmt: str = "GeoJSON",
+        output_keys_sort: bool = False,
+    ) -> None:
         self.gitem = gitem
-        self.inputdata = self._loader_temp(input_ptr)
+        if self.infmt == "GeoJSON":
+            self.inputdata = self._loader_temp(input_ptr)
+        elif self.infmt == "GeoJSONSeq":
+            # self.inputdataseq
+            self.inputdataseq = []
+            self._loader_temp_seq(input_ptr)
+        else:
+            raise Exception("Unknow infmt")
+
+        self.infmt = infmt
+        self.outfmt = outfmt
+        self.output_keys_sort = output_keys_sort
         # pass
 
     def _loader_temp(self, input_ptr: str):
@@ -224,6 +280,12 @@ class GeoJSONFileEditor:
 
         return data
 
+    def _loader_temp_seq(self, input_ptr: str):
+        raise NotImplementedError("implement read from GeoJSONSeq")
+        # pass
+
+        return data
+
     def output(self):
         json_data = json.loads(self.inputdata)
         if not json_data or "features" not in json_data:
@@ -239,15 +301,32 @@ class GeoJSONFileEditor:
         # print(json_data)
 
         # @TODO keep other metadata at top level, if exist
-        print('{"type": "FeatureCollection", "features": [')
-        count = len(json_data["features"])
+
+        prepend = ""
+
+        if self.outfmt == "GeoJSON":
+            print('{"type": "FeatureCollection", "features": [')
+
+        # count = len(json_data["features"])
         for item in json_data["features"]:
-            count -= 1
-            line_str = json.dumps(item, ensure_ascii=False)
-            if count > 0:
-                line_str += ","
-            print(line_str)
-        print("]}")
+            # count -= 1
+            if self.output_keys_sort:
+                jsonstr = json.dumps(item, ensure_ascii=False, sort_keys=True)
+            else:
+                jsonstr = json.dumps(item, ensure_ascii=False)
+
+            # https://www.rfc-editor.org/rfc/rfc8142
+            if self.outfmt == "GeoJSONSeq" or self.outfmt == "GeoJSONL":
+                # print(f"\x1e{jsonstr}\n", sep="", end="")
+                print(f"{jsonstr}\x1e\n", sep="", end="")
+                continue
+
+            print(f"{prepend} {jsonstr}")
+            if prepend == "":
+                prepend = ","
+
+        if self.outfmt == "GeoJSON":
+            print("]}")
 
         # print(json.dumps(result, ensure_ascii=False))
 
